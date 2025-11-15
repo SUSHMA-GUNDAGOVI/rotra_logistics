@@ -63,6 +63,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'rotra_logistics.urls'
+LOGIN_URL = '/'
 
 TEMPLATES = [
     {

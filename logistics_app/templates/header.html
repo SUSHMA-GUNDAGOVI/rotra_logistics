@@ -24,8 +24,15 @@
     <div class="icon-btn">✉️</div>
 
     <div class="user-profile" id="profile-btn">
-      <div class="user-avatar">A</div>
-      <span>Admin</span>
+      <div class="user-avatar">
+  {% if request.user.profile_image %}
+      <img src="{{ request.user.profile_image.url }}" alt="Profile">
+  {% else %}
+      {{ request.user.full_name|slice:":1" }}
+  {% endif %}
+</div>
+
+      <span>{{request.user.full_name}}</span>
     </div>
 
     <!-- Dropdown Menu -->
@@ -230,6 +237,25 @@
     padding: 20px;
     font-size: 14px;
   }
+  .user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #007bff;
+  color: #fff;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 </style>
 
 <script>

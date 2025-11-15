@@ -455,3 +455,10 @@
   transition: opacity 0.3s;
 }
 #sidebarOverlay.show { display: block; }
+.modal-content {
+  -ms-overflow-style: none;          /* IE & Edge */
+  scrollbar-width: none;             /* Firefox */
+}
+.modal-content::-webkit-scrollbar {
+  width: 0 !important;               /* Chrome / Safari */
+}

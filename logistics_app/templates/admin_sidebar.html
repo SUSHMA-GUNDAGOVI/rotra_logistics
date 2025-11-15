@@ -1,13 +1,14 @@
+<!-- admin_sidebar.html -->
 <style>
   .sidebar .menu {
     display: flex;
     flex-direction: column;
-    gap: 12px; /* space between each menu item */
+    gap: 12px;
     margin-top: 20px;
   }
 
   .sidebar .menu-item {
-    font-size: 14px; /* increased font size */
+    font-size: 14px;
     padding: 10px 20px;
     display: flex;
     align-items: center;
@@ -15,6 +16,7 @@
     color: #333;
     text-decoration: none;
     transition: background 0.2s, color 0.2s;
+    cursor: pointer;
   }
 
   .sidebar .menu-item svg {
@@ -27,9 +29,259 @@
     border-radius: 8px;
     color: #000;
   }
+
+  /* Modal Styles */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-overlay.active {
+    display: flex;
+  }
+
+  .modal-container {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e5e5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  .close-btn:hover {
+    background: #f5f5f5;
+    color: #333;
+  }
+
+  .modal-body {
+    padding: 24px;
+  }
+
+  .profile-section {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .profile-image-wrapper {
+    position: relative;
+    margin-right: 20px;
+  }
+
+  .profile-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #f0f0f0;
+  }
+
+  .edit-icon {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: #ef4444;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid white;
+    transition: background 0.2s;
+  }
+
+  .edit-icon:hover {
+    background: #dc2626;
+  }
+
+  .edit-icon svg {
+    width: 14px;
+    height: 14px;
+    stroke: white;
+  }
+
+  .profile-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .profile-info p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+  }
+
+  #profileImageInput {
+    display: none;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #333;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+
+  .form-group input:disabled {
+    background: #f9fafb;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+  }
+
+  .btn-cancel {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+
+  .btn-cancel:hover {
+    background: #e5e7eb;
+    color: #4b5563;
+  }
+
+  .btn-save {
+    background: #ef4444;
+    color: white;
+  }
+
+  .btn-save:hover {
+    background: #dc2626;
+  }
+
+  /* Hide scrollbar but keep scroll functionality */
+.modal-container::-webkit-scrollbar {
+  width: 0 !important;
+}
+
+.modal-container {
+  -ms-overflow-style: none;      /* IE & Edge */
+  scrollbar-width: none;         /* Firefox */
+}
+
+  @media (max-width: 640px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+    .modal-container {
+      width: 95%;
+      max-height: 95vh;
+    }
+  }
 </style>
 
-<!-- admin_sidebar.html -->
 <div class="sidebar" id="sidebar">
   <div class="logo">
     <div class="logo-icon">R</div>
@@ -48,7 +300,7 @@
       Dashboard
     </a>
 
-     <a href="/loads/" class="menu-item">
+    <a href="/loads/" class="menu-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M4 6h16M4 12h16m-7 6h7" />
@@ -65,12 +317,12 @@
     </div>
 
     <a href="/drivers/" class="menu-item">
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-      d="M16 11V7a4 4 0 10-8 0v4M5 11h14v10H5z" />
-  </svg>
-  Driver Management
-</a>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M16 11V7a4 4 0 10-8 0v4M5 11h14v10H5z" />
+      </svg>
+      Driver Management
+    </a>
 
     <a href="{% url 'vehicle_list' %}" class="menu-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,14 +340,15 @@
       Payment Management
     </div>
 
-    <!-- Converted Customer Management to link -->
-    <a href="/customers/" class="menu-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 12a5 5 0 100-10 5 5 0 000 10z" />
-      </svg>
-      Customer Management
-    </a>
+    <a href="/customers/" 
+   class="menu-item {% if request.path == '/customers/' %}active{% endif %}">
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 12a5 5 0 100-10 5 5 0 000 10z" />
+  </svg>
+  Customer Management
+</a>
+
 
     <a href="/vendor/" class="menu-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,7 +366,8 @@
       Employee
     </a>
 
-    <div class="menu-item">
+    <!-- Settings with onclick to open modal -->
+    <div class="menu-item" onclick="openSettingsModal()">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M12 8v4l3 3m6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -122,3 +376,243 @@
     </div>
   </div>
 </div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2>Profile Settings</h2>
+      <button class="close-btn" onclick="closeSettingsModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="profile-section">
+        <div class="profile-image-wrapper">
+          <img src="{{ user.profile_image.url|default:'/static/images/default_avatar.png' }}" 
+               alt="Profile" class="profile-image" id="profileImg">
+          <div class="edit-icon" onclick="document.getElementById('profileImageInput').click()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </div>
+          <input type="file" id="profileImageInput" accept="image/*" onchange="previewImage(event)">
+        </div>
+        <div class="profile-info">
+          <h3 id="profileName">{{ user.full_name }}</h3>
+          <p id="profileEmail">{{ user.email }}</p>
+        </div>
+      </div>
+
+      <form id="profileForm">
+        {% csrf_token %}
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fullName">Full Name</label>
+            <input type="text" id="fullName" name="full_name" value="{{ user.full_name }}" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" value="{{ user.email }}" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="phoneNumber">Mobile Number</label>
+            <input type="tel" id="phoneNumber" name="phone_number" value="{{ user.phone_number }}" required>
+          </div>
+          <div class="form-group">
+            <label for="role">Role</label>
+            <select id="role" name="role">
+              <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+              <option value="traffic_person" {% if user.role == 'traffic_person' %}selected{% endif %}>Traffic Person</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newPassword">New Password</label>
+            <input type="password" id="newPassword" name="new_password" placeholder="Leave blank to keep current password">
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm new password">
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeSettingsModal()">Cancel</button>
+      <button class="btn btn-save" onclick="saveProfileChanges()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openSettingsModal() {
+    document.getElementById('settingsModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    loadProfileData();
+  }
+
+  function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('settingsModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeSettingsModal();
+    }
+  });
+
+  // Preview Selected Profile Image
+  function previewImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('profileImg').src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // Load profile data into modal
+  function loadProfileData() {
+    fetch('/profile/data/')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('fullName').value = data.full_name;
+        document.getElementById('email').value = data.email;
+        document.getElementById('phoneNumber').value = data.phone_number;
+
+        document.getElementById('profileName').textContent = data.full_name;
+        document.getElementById('profileEmail').textContent = data.email;
+
+        if (data.profile_image_url) {
+          document.getElementById('profileImg').src = data.profile_image_url;
+        }
+      })
+      .catch(error => {
+        Toastify({
+          text: "Failed to load profile!",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#ef4444",
+        }).showToast();
+      });
+  }
+
+  // Save profile changes
+  function saveProfileChanges() {
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (newPassword || confirmPassword) {
+      if (newPassword !== confirmPassword) {
+        Toastify({
+          text: "Passwords do not match!",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#ef4444",
+        }).showToast();
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        Toastify({
+          text: "Password must be at least 6 characters!",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#ef4444",
+        }).showToast();
+        return;
+      }
+    }
+
+    const formData = new FormData(document.getElementById('profileForm'));
+
+    const profileImageInput = document.getElementById('profileImageInput');
+    if (profileImageInput.files.length > 0) {
+      formData.append('profile_image', profileImageInput.files[0]);
+    }
+
+    fetch('/profile/update/', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken')
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+      if (data.success) {
+        Toastify({
+          text: "Profile updated successfully!",
+          duration: 3500,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "rgb(22, 163, 74)"
+        }).showToast();
+
+        document.getElementById('profileName').textContent = data.data.full_name;
+        document.getElementById('profileEmail').textContent = data.data.email;
+
+        // Clear password fields
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+
+        closeSettingsModal();
+
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
+
+      } else {
+        Toastify({
+          text: data.error || "Update failed!",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#ef4444",
+        }).showToast();
+      }
+    })
+    .catch(error => {
+      Toastify({
+        text: "Something went wrong!",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#ef4444",
+      }).showToast();
+    });
+  }
+
+  // Get CSRF cookie
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

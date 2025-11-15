@@ -9,6 +9,8 @@ from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 import re
 from django.db import transaction
+from django.core.files.storage import default_storage
+
 
 
 
@@ -930,8 +932,7 @@ def vehicle_list(request):
         return redirect('admin_login')
 
     # Vehicles: still only those whose owner was created by this admin
-    vehicles = Vehicle.objects.filter(owner__created_by=request.user) \
-                    .select_related('owner').order_by('-id')
+    vehicles = Vehicle.objects.select_related('owner').order_by('-id')
 
     # Vendors: ALL active vendors (role='vendor')
     vendors = CustomUser.objects.filter(role='vendor', is_active=True).order_by('full_name')
@@ -1008,13 +1009,13 @@ def add_vehicle(request):
 @require_http_methods(["POST"])
 def delete_vehicle(request, vehicle_id):
     try:
-        vehicle = get_object_or_404(Vehicle, id=vehicle_id, owner__created_by=request.user)
+        vehicle = get_object_or_404(Vehicle, id=vehicle_id)
         reg_no = vehicle.reg_no
         vehicle.delete()
         return JsonResponse({'success': True, 'message': f'Vehicle {reg_no} deleted.'})
     except Exception:
-        return JsonResponse({'success': False, 'error': 'Failed to delete.'}, status=500)
-
+        return JsonResponse({'success': False}, status=500)
+    
 @login_required
 @require_http_methods(["POST"])
 def toggle_vehicle_status(request, vehicle_id):
@@ -1028,3 +1029,79 @@ def toggle_vehicle_status(request, vehicle_id):
         })
     except Exception:
         return JsonResponse({'success': False, 'error': 'Failed to update status.'}, status=500)
+    
+@login_required
+def update_profile(request):
+    """
+    Handle profile update via AJAX
+    """
+    if request.method == 'POST':
+        try:
+            user = request.user
+            
+            # Update basic fields
+            user.full_name = request.POST.get('full_name', user.full_name)
+            user.email = request.POST.get('email', user.email)
+            user.phone_number = request.POST.get('phone_number', user.phone_number)
+            
+            # Handle password change
+            new_password = request.POST.get('new_password')
+            if new_password:
+                # Validate password length
+                if len(new_password) < 6:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Password must be at least 6 characters long'
+                    }, status=400)
+                
+                # Set the new password
+                user.set_password(new_password)
+            
+            # Handle profile image upload
+            if 'profile_image' in request.FILES:
+                # Delete old profile image if it exists and is not the default
+                if user.profile_image and user.profile_image.name != 'profile_images/default_avatar.png':
+                    default_storage.delete(user.profile_image.name)
+                
+                user.profile_image = request.FILES['profile_image']
+            
+            user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Profile updated successfully',
+                'data': {
+                    'full_name': user.full_name,
+                    'email': user.email,
+                    'phone_number': user.phone_number,
+                    'profile_image_url': user.profile_image.url if user.profile_image else None
+                }
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@login_required
+def get_profile_data(request):
+    """
+    Get current user profile data for modal
+    """
+    user = request.user
+    
+    return JsonResponse({
+        'full_name': user.full_name,
+        'email': user.email,
+        'phone_number': user.phone_number,
+        'role': user.get_role_display(),
+        'role_value': user.role,
+        'address': user.address or '',
+        'pan_number': user.pan_number or '',
+        'profile_image_url': user.profile_image.url if user.profile_image else None,
+        'created_by': user.created_by.full_name if user.created_by else 'System'
+    })

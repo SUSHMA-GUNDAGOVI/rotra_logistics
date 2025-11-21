@@ -15,8 +15,280 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'css/style.css' %}" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
+    <link rel="stylesheet" href="{% static 'css/vehicle_management.css' %}" />
 
-<link rel="stylesheet" href="{% static 'css/vehicle_management.css' %}" />
+    <style>
+        /* Updated Sidebar Styles - Match Driver Management */
+        #profileSidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 320px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+            overflow-y: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #profileSidebar::-webkit-scrollbar {
+            width: 0 !important;
+        }
+
+        #profileSidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            position: static;
+        }
+
+        .close-btn:hover {
+            background-color: #f3f4f6;
+        }
+
+        .profile-avatar {
+            display: flex;
+            justify-content: center;
+            padding: 24px 20px 16px;
+        }
+
+       .avatar-circle {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+        .profile-info {
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .profile-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0 0 8px 0;
+        }
+
+        .profile-phone {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0 0 4px 0;
+        }
+
+        .profile-id {
+            font-size: 13px;
+            color: #9ca3af;
+            margin: 0;
+        }
+
+        .info-section {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .info-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0 0 16px 0;
+        }
+
+        .info-section-title i {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .info-value {
+            font-size: 13px;
+            color: #111827;
+            font-weight: 500;
+        }
+
+        .performance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .performance-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .performance-label {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .performance-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #16a34a;
+        }
+
+        .documents-section {
+            padding: 20px;
+            flex-grow: 1;
+        }
+
+        .document-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .document-item:last-child {
+            border-bottom: none;
+        }
+
+        .document-name {
+            font-size: 13px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .document-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .document-status.uploaded {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+
+        .document-status.not-uploaded {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+
+        .document-status i {
+            font-size: 10px;
+        }
+
+        .sidebar-actions {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+        }
+
+        .sidebar-btn {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-view-history {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .btn-view-history:hover {
+            background-color: #b91c1c;
+        }
+
+        .btn-edit {
+            background-color: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-edit:hover {
+            background-color: #f9fafb;
+        }
+
+        .btn-deactivate {
+            background-color: white;
+            color: #dc2626;
+            border: 1px solid #dc2626;
+        }
+
+        .btn-deactivate:hover {
+            background-color: #fef2f2;
+        }
+    </style>
 </head>
 <body>
 <div class="dashboard">
@@ -50,15 +322,18 @@
                             "reg_no": "{{ vehicle.reg_no|escapejs }}",
                             "owner_name": "{{ vehicle.owner.full_name|escapejs }}",
                             "owner_phone": "{{ vehicle.owner.phone_number }}",
-                            "type": "{{ vehicle.get_type_display|escapejs }}",
-                            "fuel_type": "{{ vehicle.get_fuel_type_display|escapejs }}",
                             "insurance_doc": "{% if vehicle.insurance_doc %}{{ vehicle.insurance_doc.url }}{% endif %}",
                             "rc_doc": "{% if vehicle.rc_doc %}{{ vehicle.rc_doc.url }}{% endif %}",
+                            "hasInsurance": {% if vehicle.insurance_doc %}true{% else %}false{% endif %},
+                            "hasRC": {% if vehicle.rc_doc %}true{% else %}false{% endif %},
                             "status": "{{ vehicle.status }}",
                             "status_label": "{{ vehicle.get_status_display }}"
                         }'>
                         <td>{{ vehicle.reg_no }}</td>
-                        <td>{{ vehicle.owner.full_name }}</td>
+                        <td>
+                            <div>{{ vehicle.owner.full_name }}</div>
+                            <div style="font-size:12px;color:#6b7280;">{{ vehicle.owner.phone_number }}</div>
+                        </td>
                         <td>
                             <span class="status-badge {% if vehicle.status == 'active' %}status-active{% else %}status-inactive{% endif %}">
                                 {{ vehicle.get_status_display }}
@@ -163,104 +438,89 @@
         </div>
     </div>
 
-    <!-- PROFILE SIDEBAR (exact match) -->
+    <!-- UPDATED PROFILE SIDEBAR -->
     <div id="profileSidebar">
-        <button class="close-btn" id="closeSidebar">×</button>
+        <div class="sidebar-header">
+            <h3>Vehicle Profile</h3>
+            <button class="close-btn" id="closeSidebar">×</button>
+        </div>
 
-        <div class="sidebar-content">
-            <!-- Header -->
-            <div style="text-align:center;margin-bottom:16px;">
-                <div style="font-size:16px;font-weight:700;color:#111827;" id="sidebarRegNo">TN-45-AB-1234</div>
-                <div style="font-size:13px;color:#6b7280;margin-top:3px;" id="sidebarType">Heavy Truck • 25 Tons</div>
-                <div style="margin-top:6px;padding:3px 10px;background:#ecfdf5;color:#065f46;border-radius:16px;font-size:11px;display:inline-block;font-weight:500;">Active</div>
+        <div class="profile-avatar">
+            <div class="avatar-circle" id="profileAvatar"></div>
+        </div>
+
+        <div class="profile-info">
+            <h3 class="profile-name" id="profileRegNo"></h3>
+            <p class="profile-phone" id="profileOwnerName"></p>
+            <p class="profile-id" id="profileOwnerPhone"></p>
+        </div>
+
+        <div class="info-section">
+            <h4 class="info-section-title">
+                <i class="fas fa-user"></i>
+                Owner Information
+            </h4>
+            <div class="info-row">
+                <span class="info-label">Name:</span>
+                <span class="info-value" id="ownerInfoName"></span>
             </div>
-
-            <!-- Truck Image -->
-            <div style="margin:16px 0;border-radius:10px;overflow:hidden;">
-                <img src="https://images.unsplash.com/photo-1624369963127-dd4267a3c73b?w=800&h=280&fit=crop" alt="Truck" style="width:100%;height:130px;object-fit:cover;">
+            <div class="info-row">
+                <span class="info-label">Phone:</span>
+                <span class="info-value" id="ownerInfoPhone"></span>
             </div>
+        </div>
 
-            <!-- Vehicle Details -->
-            <div style="background:#f9fafb;padding:14px;border-radius:10px;margin-bottom:14px;">
-                <h4 style="margin:0 0 10px;font-size:13px;color:#374151;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Vehicle Details</h4>
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;">
-                    <span style="color:#6b7280;">Vehicle Number</span>
-                    <strong id="sidebarRegNoDetail" style="font-weight:600;color:#111827;">TN-45-AB-1234</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;">
-                    <span style="color:#6b7280;">Type</span>
-                    <strong id="sidebarTypeDetail" style="font-weight:600;color:#111827;">Heavy Truck</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;">
-                    <span style="color:#6b7280;">Load Weight</span>
-                    <strong style="font-weight:600;color:#111827;">25 Tons</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;">
-                    <span style="color:#6b7280;">Fuel Type</span>
-                    <strong id="sidebarFuelTypeDetail" style="font-weight:600;color:#111827;">Diesel</strong>
-                </div>
+        <div class="info-section">
+            <h4 class="info-section-title">
+                <i class="fas fa-chart-line"></i>
+                Performance
+            </h4>
+            <div class="performance-item">
+                <span class="performance-label">Total Trips</span>
+                <span class="performance-value" id="totalTrips">0 trips</span>
             </div>
-
-            <!-- Owner Information -->
-            <div style="background:#f0f9ff;padding:14px;border-radius:10px;margin-bottom:14px;">
-                <h4 style="margin:0 0 10px;font-size:13px;color:#374151;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Owner Information</h4>
-                <div style="display:flex;gap:10px;align-items:center;">
-                    <div style="width:40px;height:40px;border-radius:50%;background:#3b82f6;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">
-                        <span id="ownerInitials">RK</span>
-                    </div>
-                    <div>
-                        <div style="font-weight:600;font-size:14px;color:#111827;" id="sidebarOwnerName">Ramesh Kumar</div>
-                        <div style="color:#6b7280;font-size:12px;" id="sidebarOwnerPhone">+91 98765 43210</div>
-                        <div style="color:#6b7280;font-size:12px;">ramesh@transport.co</div>
-                    </div>
-                </div>
+            <div class="performance-item">
+                <span class="performance-label">Completed Trips</span>
+                <span class="performance-value" id="completedTrips">0 trips</span>
             </div>
+            <div class="performance-item">
+                <span class="performance-label">Pending Trips</span>
+                <span class="performance-value" id="pendingTrips" style="color:#3b82f6;">0 trips</span>
+            </div>
+        </div>
 
-            <!-- Trip Statistics -->
-            <div style="display:flex;background:#f0fdf4;padding:14px;border-radius:10px;margin-bottom:14px;text-align:center;">
-                <div style="flex:1;">
-                    <div style="font-size:15px;font-weight:700;color:#16a34a;">14</div>
-                    <div style="font-size:11px;color:#6b7280;margin-top:3px;">Total Trips</div>
-                </div>
-                <div style="flex:1;">
-                    <div style="font-size:15px;font-weight:700;color:#16a34a;">5</div>
-                    <div style="font-size:11px;color:#6b7280;margin-top:3px;">Completed Trips</div>
-                </div>
-                <div style="flex:1;">
-                    <div style="font-size:15px;font-weight:700;color:#3b82f6;">3</div>
-                    <div style="font-size:11px;color:#6b7280;margin-top:3px;">Pending Trips</div>
+        <div class="documents-section">
+            <h4 class="info-section-title">
+                <i class="fas fa-file-alt"></i>
+                Documents
+            </h4>
+            <div class="document-item">
+                <span class="document-name">RC Certificate</span>
+                <div class="document-status" id="docRC">
+                    <i class="fas fa-times"></i>
                 </div>
             </div>
-
-            <!-- Documents -->
-            <div style="background:#fff;padding:14px;border-radius:10px;border:1px solid #e5e7eb;">
-                <h4 style="margin:0 0 10px;font-size:13px;color:#374151;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Documents</h4>
-
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                    <div style="font-size:13px;color:#374151;">RC Certificate</div>
-                    <div id="rcDocStatus">
-                        <span style="width:18px;height:18px;background:#fecaca;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-exclamation" style="color:#dc2626;font-size:10px;"></i>
-                        </span>
-                        <span style="font-size:12px;color:#dc2626;">Pending</span>
-                    </div>
-                </div>
-
-                <div style="display:flex;align-items:center;justify-content:space-between;">
-                    <div style="font-size:13px;color:#374151;">Insurance</div>
-                    <div id="insuranceDocStatus">
-                        <span style="width:18px;height:18px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-check" style="color:#16a34a;font-size:10px;"></i>
-                        </span>
-                        <a href="#" id="insuranceLink" target="_blank" style="color:#3b82f6;font-size:12px;text-decoration:none;"></a>
-                    </div>
+            <div class="document-item">
+                <span class="document-name">Insurance</span>
+                <div class="document-status" id="docInsurance">
+                    <i class="fas fa-times"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Bottom Button -->
-        <div style="padding:14px 16px;border-top:1px solid #e5e7eb;background:#fff;">
-            <button class="assign-driver-btn">Assign Driver</button>
+        <div class="sidebar-actions">
+            <button class="sidebar-btn btn-view-history">
+                <i class="fas fa-history"></i>
+                View Trip History
+            </button>
+            <button class="sidebar-btn btn-edit">
+                <i class="fas fa-edit"></i>
+                Edit
+            </button>
+            <button class="sidebar-btn btn-deactivate" id="toggleStatusBtn">
+                <i class="fas fa-ban"></i>
+                Deactivate
+            </button>
         </div>
     </div>
 
@@ -372,53 +632,74 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* --------------------------------------------------------------
+       GET INITIALS
+    -------------------------------------------------------------- */
+    function getInitials(name) {
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+
+    /* --------------------------------------------------------------
        SIDEBAR OPEN / CLOSE
     -------------------------------------------------------------- */
     function openSidebar(row) {
         const data = JSON.parse(row.dataset.vehicle);
         currentVehicleId = data.id;
 
-        document.getElementById("sidebarRegNo").textContent = data.reg_no;
-        document.getElementById("sidebarRegNoDetail").textContent = data.reg_no;
-        document.getElementById("sidebarTypeDetail").textContent = data.type;
-        document.getElementById("sidebarFuelTypeDetail").textContent = data.fuel_type;
-        document.getElementById("sidebarType").textContent = `${data.type} • 25 Tons`;
+        // Update avatar with vehicle reg no initials
+        const avatarEl = document.getElementById("profileAvatar");
+        avatarEl.textContent = getInitials(data.reg_no);
 
-        document.getElementById("sidebarOwnerName").textContent = data.owner_name;
-        document.getElementById("sidebarOwnerPhone").textContent = data.owner_phone;
-        document.getElementById("ownerInitials").textContent =
-            data.owner_name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+        // Update profile info from backend data
+        document.getElementById("profileRegNo").textContent = data.reg_no;
+        document.getElementById("profileOwnerName").textContent = data.owner_name;
+        document.getElementById("profileOwnerPhone").textContent = data.owner_phone;
 
-        // ----- RC DOC -----
-        const rcStatus = document.getElementById("rcDocStatus");
-        if (data.rc_doc) {
-            rcStatus.innerHTML = `<span style="width:18px;height:18px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                                    <i class="fas fa-check" style="color:#16a34a;font-size:10px;"></i>
-                                 </span>
-                                 <a href="${data.rc_doc}" target="_blank" style="color:#3b82f6;font-size:12px;text-decoration:none;">View</a>`;
+        // Update owner information section
+        document.getElementById("ownerInfoName").textContent = data.owner_name;
+        document.getElementById("ownerInfoPhone").textContent = data.owner_phone;
+
+        // Update performance from backend data (placeholder - update when backend provides)
+        document.getElementById("totalTrips").textContent = '0 trips';
+        document.getElementById("completedTrips").textContent = '0 trips';
+        document.getElementById("pendingTrips").textContent = '0 trips';
+
+        // Update documents from backend data
+        const docRC = document.getElementById("docRC");
+        const docInsurance = document.getElementById("docInsurance");
+
+        // RC Document
+        if (data.hasRC) {
+            docRC.className = 'document-status uploaded';
+            docRC.innerHTML = '<i class="fas fa-check"></i>';
         } else {
-            rcStatus.innerHTML = `<span style="width:18px;height:18px;background:#fecaca;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                                    <i class="fas fa-exclamation" style="color:#dc2626;font-size:10px;"></i>
-                                 </span>
-                                 <span style="font-size:12px;color:#dc2626;">Pending</span>`;
+            docRC.className = 'document-status not-uploaded';
+            docRC.innerHTML = '<i class="fas fa-times"></i>';
         }
 
-        // ----- INSURANCE DOC -----
-        const insStatus = document.getElementById("insuranceDocStatus");
-        if (data.insurance_doc) {
-            insStatus.innerHTML = `<span style="width:18px;height:18px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                                    <i class="fas fa-check" style="color:#16a34a;font-size:10px;"></i>
-                                 </span>
-                                 <a href="${data.insurance_doc}" target="_blank" style="color:#3b82f6;font-size:12px;text-decoration:none;">View</a>`;
+        // Insurance Document
+        if (data.hasInsurance) {
+            docInsurance.className = 'document-status uploaded';
+            docInsurance.innerHTML = '<i class="fas fa-check"></i>';
         } else {
-            insStatus.innerHTML = `<span style="width:18px;height:18px;background:#fecaca;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                                    <i class="fas fa-exclamation" style="color:#dc2626;font-size:10px;"></i>
-                                 </span>
-                                 <span style="font-size:12px;color:#dc2626;">Pending</span>`;
+            docInsurance.className = 'document-status not-uploaded';
+            docInsurance.innerHTML = '<i class="fas fa-times"></i>';
         }
 
+        // Update toggle button based on backend status
+        const toggleBtn = document.getElementById('toggleStatusBtn');
+        if (data.status === 'active') {
+            toggleBtn.innerHTML = '<i class="fas fa-ban"></i> Deactivate';
+        } else {
+            toggleBtn.innerHTML = '<i class="fas fa-check-circle"></i> Activate';
+        }
+        
         sidebar.classList.add('open');
         overlay.classList.add('show');
+        document.querySelectorAll('.clickable-row').forEach(r => r.style.backgroundColor = '');
         row.style.backgroundColor = '#f0f9ff';
     }
 
@@ -437,6 +718,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
     closeBtn.addEventListener("click", closeSidebar);
     overlay.addEventListener("click", closeSidebar);
+
+    // Toggle Status Button
+    document.getElementById('toggleStatusBtn').addEventListener('click', function() {
+        if (!currentVehicleId || !confirm('Change vehicle status?')) return;
+        fetch(`/vehicle/${currentVehicleId}/toggle-status/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showToast(d.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(d.error || 'Failed', 'error');
+            }
+        });
+    });
 
     /* --------------------------------------------------------------
        ACTION BUTTONS (View / Edit / Delete)
@@ -511,7 +810,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 tr.dataset.vehicle = JSON.stringify(data.vehicle_data);
                 tr.innerHTML = `
                     <td>${data.vehicle.reg_no}</td>
-                    <td>${data.vehicle.owner_name}</td>
+                    <td>
+                        <div>${data.vehicle.owner_name}</div>
+                        <div style="font-size:12px;color:#6b7280;">${data.vehicle_data.owner_phone}</div>
+                    </td>
                     <td><span class="status-badge status-active">Active</span></td>
                     <td class="action-col">
                         <div class="action-buttons">

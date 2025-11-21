@@ -2,85 +2,480 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from .serializers import RegisterSerializer, VehicleTypeSerializer, VehicleSerializer, DriverSerializer, LoadDetailsSerializer, LoadRequestSerializer, PhoneNumberTokenObtainPairSerializer, TripCommentSerializer
+from .serializers import VendorAcceptedLoadDetailsSerializer, VendorTripDetailsSerializer, LRUploadSerializer, PODUploadSerializer
+from rest_framework.generics import RetrieveAPIView
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from logistics_app.models import CustomUser
+from logistics_app.models import CustomUser, VehicleType, Vehicle, Driver, Load, LoadRequest, TripComment
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from django.shortcuts import get_object_or_404
 
 # views.py
+
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(APIView):
+    permission_classes = [AllowAny]   # Anyone can access
+    authentication_classes = []       # No auth required
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            
-            # Generate tokens for immediate login after registration
+
             refresh = RefreshToken.for_user(user)
-            
-            # Build response data
-            response_data = {
+
+            data = {
                 'user_id': user.id,
-                'name': user.username,
+                'full_name': user.full_name,
                 'email': user.email,
                 'phone_number': user.phone_number,
                 'role': user.role,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
+                'tds_declaration': request.build_absolute_uri(user.tds_declaration.url) if user.tds_declaration else None
             }
-            
-            # Add TDS declaration URL if it exists
-            if user.tds_declaration:
-                response_data['tds_declaration'] = request.build_absolute_uri(user.tds_declaration.url)
-            else:
-                response_data['tds_declaration'] = None
-            
+
             return Response({
                 'status': True,
                 'message': 'User registered successfully.',
-                'data': response_data
+                'data': data
             }, status=status.HTTP_201_CREATED)
+
         return Response({
-            'status': False, 
+            'status': False,
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
     def post(self, request):
-        phone_number = request.data.get('phone_number')
-        password = request.data.get('password')
+        serializer = PhoneNumberTokenObtainPairSerializer(data=request.data)
 
-        if not phone_number or not password:
-            return Response(
-                {'status': False, 'message': 'Phone number and password are required.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if not serializer.is_valid():
+            return Response({
+                "status": False,
+                "message": "Invalid phone number or password.",
+                "errors": serializer.errors
+            }, status=400)
 
-        try:
-            user = CustomUser.objects.get(phone_number=phone_number)
-        except CustomUser.DoesNotExist:
-            return Response(
-                {'status': False, 'message': 'Invalid phone number or password.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        if not user.check_password(password):
-            return Response(
-                {'status': False, 'message': 'Invalid phone number or password.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-
+        return Response(serializer.validated_data, status=200)
+    
+class VehicleTypeListView(APIView):
+    def get(self,request):
+        types = VehicleType.objects.all().order_by('name')
+        serializer = VehicleTypeSerializer(types, many=True)
         return Response({
             'status': True,
-            'message': 'Login successful.',
-            'data': {
-                'user_id': user.id,
-                'name': user.username,
-                'email': user.email,
-                'phone_number': user.phone_number,
-                'role': user.role,
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-            }
+            'message' : 'Vehicle types retrieved successfully.',
+            'data' : serializer.data
+
         }, status=status.HTTP_200_OK)
+    
+class AddVehicleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data.copy()
+        data["owner"] = request.user.id   # Auto-assign logged-in user
+
+        serializer = VehicleSerializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save(owner=request.user)  
+            return Response({
+                "status": True,
+                "message": "Vehicle added successfully!",
+                "vehicle": serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "status": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')    
+class AddDriverView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        # Only vendors can add drivers
+        if user.role != "vendor":
+            return Response({
+                "status": False,
+                "message": "Only vendors can add drivers."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data.copy()
+        data["owner"] = user.id      # vendor ID
+        data["created_by"] = user.id  # who created
+
+        serializer = DriverSerializer(data=data)
+
+        if serializer.is_valid():
+            driver = serializer.save(owner=user, created_by=user)
+
+            return Response({
+                "status": True,
+                "message": "Driver added successfully.",
+                "driver": DriverSerializer(driver).data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "status": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_all_loads(request):
+    loads = Load.objects.all().order_by('-created_at')   # fetch all
+    serializer = LoadDetailsSerializer(loads, many=True)
+
+    return Response({
+        "status": True,
+        "message": "All loads fetched successfully.",
+        "data": serializer.data
+    }, status=200)
+
+
+class SendVendorRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, load_id):
+        try:
+            load = Load.objects.get(id=load_id)
+        except Load.DoesNotExist:
+            return Response({'status': False, 'message': 'Load not found.'}, 
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Prevent duplicate requests from same vendor
+        if LoadRequest.objects.filter(load=load, vendor=request.user).exists():
+            return Response({
+                'status': False, 
+                'message': 'You have already sent a request for this load.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        message = request.data.get('message', '').strip()
+
+        load_request = LoadRequest.objects.create(
+            load=load,
+            vendor=request.user,
+            message=message or None
+        )
+
+        serializer = LoadRequestSerializer(load_request)
+        return Response({
+            'status': True,
+            'message': 'Request sent successfully!',
+            'data': serializer.data
+        }, status=status.HTTP_201_CREATED)
+    
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_all_vehicles(request):
+    vehicles = Vehicle.objects.all().order_by("-created_at")
+    serializer = VehicleSerializer(vehicles, many=True)
+
+    return Response({
+        "status": True,
+        "message": "Vehicle list fetched successfully.",
+        "data": serializer.data
+    }, status=200)
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def update_vehicle(request, vehicle_id):
+    try:
+        vehicle = Vehicle.objects.get(id=vehicle_id)
+    except Vehicle.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "Vehicle not found."
+        }, status=404)
+
+    serializer = VehicleSerializer(vehicle, data=request.data, partial=True)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            "status": True,
+            "message": "Vehicle updated successfully.",
+            "data": serializer.data
+        }, status=200)
+
+    return Response({
+        "status": False,
+        "message": "Validation failed.",
+        "errors": serializer.errors
+    }, status=400)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_vehicle(request, vehicle_id):
+    try:
+        vehicle = Vehicle.objects.get(id=vehicle_id)
+    except Vehicle.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "Vehicle not found."
+        }, status=404)
+
+    vehicle.delete()
+
+    return Response({
+        "status": True,
+        "message": "Vehicle deleted successfully."
+    }, status=200)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_drivers(request):
+    drivers = Driver.objects.filter(owner=request.user).order_by("-created_at")
+    serializer = DriverSerializer(drivers, many=True)
+    
+    return Response({
+        "status": True,
+        "message": "Driver list fetched successfully.",
+        "data": serializer.data
+    }, status=200)
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def update_driver(request, driver_id):
+    try:
+        driver = Driver.objects.get(id=driver_id, owner=request.user)
+    except Driver.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "Driver not found."
+        }, status=404)
+
+    serializer = DriverSerializer(driver, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            "status": True,
+            "message": "Driver updated successfully.",
+            "data": serializer.data
+        }, status=200)
+
+    return Response({
+        "status": False,
+        "message": "Validation failed.",
+        "errors": serializer.errors
+    }, status=400)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_driver(request, driver_id):
+    try:
+        driver = Driver.objects.get(id=driver_id, owner=request.user)
+    except Driver.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "Driver not found."
+        }, status=404)
+
+    driver.delete()
+
+    return Response({
+        "status": True,
+        "message": "Driver deleted successfully."
+    }, status=200)
+
+
+
+class SendTripMessage(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, load_id):
+        load = get_object_or_404(Load, id=load_id)
+
+        comment_text = request.data.get("comment")
+        if not comment_text:
+            return Response({"error": "Message cannot be empty"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        comment_obj = TripComment.objects.create(
+            load=load,
+            sender=request.user,
+            comment=comment_text
+        )
+
+        serializer = TripCommentSerializer(comment_obj)
+        return Response(
+            {"message": "Message sent", "data": serializer.data},
+            status=status.HTTP_201_CREATED
+        )
+    
+class LoadAllMessages(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, load_id):
+        load = get_object_or_404(Load, id=load_id)
+
+        messages = TripComment.objects.filter(load=load).order_by("created_at")
+
+        serializer = TripCommentSerializer(messages, many=True)
+        return Response(serializer.data, status=200)
+    
+class VendorOngoingTrips(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        vendor = request.user
+
+        # 1️⃣ Loads where vendor has sent a request and it is not rejected
+        requested_loads = Load.objects.filter(
+            requests__vendor=vendor,
+            requests__status__in=["pending", "accepted"]
+        ).distinct()
+
+        # 2️⃣ Loads assigned to vendor
+        assigned_loads = Load.objects.filter(
+            driver__owner=vendor
+        ) | Load.objects.filter(
+            vehicle__owner=vendor
+        )
+
+        assigned_loads = assigned_loads.distinct()
+
+        # Combine results
+        loads = (requested_loads | assigned_loads).distinct().order_by('-created_at')
+
+        # 👇 IMPORTANT: pass vendor in context so serializer can return request_status
+        serializer = LoadDetailsSerializer(
+            loads,
+            many=True,
+            context={"vendor": vendor}
+        )
+
+        return Response({
+            "status": True,
+            "message": "Vendor ongoing trips fetched successfully.",
+            "data": serializer.data
+        }, status=200)
+
+    
+class VendorAcceptedLoadDetails(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, load_id):
+        vendor = request.user
+
+        # Fetch the vendor's request for this load
+        load_request = LoadRequest.objects.filter(
+            vendor=vendor,
+            load_id=load_id,
+            status="accepted"
+        ).first()
+
+        if not load_request:
+            return Response({
+                "status": False,
+                "message": "This load is not accepted or not assigned to you."
+            }, status=400)
+
+        load = load_request.load
+
+        serializer = VendorAcceptedLoadDetailsSerializer(
+            load,
+            context={"vendor": vendor}
+        )
+
+        return Response({
+            "status": True,
+            "message": "Accepted load details fetched successfully.",
+            "data": serializer.data
+        }, status=200)
+    
+class VendorTripDetailsView(RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VendorTripDetailsSerializer
+    lookup_field = "id"
+
+    def get_queryset(self):
+        vendor = self.request.user
+        return Load.objects.filter(requests__vendor=vendor)
+    
+class VendorLRUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        vendor = request.user
+
+        # Verify vendor is owner of this load request
+        load = get_object_or_404(
+            Load, 
+            id=id, 
+            requests__vendor=vendor, 
+            requests__status="accepted"
+        )
+
+        serializer = LRUploadSerializer(load, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            # Update timeline & status
+            load.update_trip_status(
+                new_status="lr_uploaded",
+                user=vendor,
+                lr_number=request.data.get("lr_number")
+            )
+
+            return Response({
+                "message": "LR uploaded successfully",
+                "lr_document": load.lr_document.url if load.lr_document else None,
+                "lr_number": load.lr_number,
+                "lr_uploaded_at": load.lr_uploaded_at
+            }, status=200)
+
+        return Response(serializer.errors, status=400)
+
+
+# -----------------------------
+# 2️⃣  POD UPLOAD API
+# -----------------------------
+class VendorPODUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        vendor = request.user
+
+        # Verify vendor is allowed to upload POD
+        load = get_object_or_404(
+            Load, 
+            id=id, 
+            requests__vendor=vendor, 
+            requests__status="accepted"
+        )
+
+        serializer = PODUploadSerializer(load, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            # Update timeline & status
+            load.update_trip_status(
+                new_status="pod_uploaded",
+                user=vendor
+            )
+
+            return Response({
+                "message": "POD uploaded successfully",
+                "pod_document": load.pod_document.url if load.pod_document else None,
+                "pod_uploaded_at": load.pod_uploaded_at
+            }, status=200)
+
+        return Response(serializer.errors, status=400)

@@ -5,6 +5,9 @@ from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 import uuid
+from logistics_app.models import VehicleType, Vehicle, Driver, Load, LoadRequest, TripComment
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -70,68 +73,281 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = CustomUser.objects.create(**validated_data)
         return user
 
-class PhoneNumberTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['phone_number'] = serializers.CharField()
-        self.fields['password'] = serializers.CharField(write_only=True)
-        
-        # Remove the default username field
-        del self.fields['username']
+class PhoneNumberTokenObtainPairSerializer(serializers.Serializer):
+    phone_number = serializers.CharField()
+    password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        phone_number = attrs.get('phone_number')
-        password = attrs.get('password')
+        phone_number = attrs.get("phone_number")
+        password = attrs.get("password")
 
         if not phone_number or not password:
-            raise serializers.ValidationError('Both phone number and password are required.')
+            raise serializers.ValidationError("Phone number and password are required.")
 
-        # Find user by phone number
+        # Check if user exists
         try:
             user = CustomUser.objects.get(phone_number=phone_number)
         except CustomUser.DoesNotExist:
-            raise serializers.ValidationError('Invalid phone number or password.')
+            raise serializers.ValidationError("Invalid phone number or password.")
 
-        # Check password
+        # Validate password
         if not user.check_password(password):
-            raise serializers.ValidationError('Invalid phone number or password.')
+            raise serializers.ValidationError("Invalid phone number or password.")
 
-        # For JWT to work, we need to create credentials with username (email)
-        credentials = {
-            'username': user.email,  # Since USERNAME_FIELD is email
-            'password': password
-        }
+        # Create tokens
+        refresh = RefreshToken.for_user(user)
 
-        # Manually authenticate to get the user
-        user = authenticate(request=self.context.get('request'), **credentials)
-        
-        if user is None:
-            raise serializers.ValidationError('Authentication failed.')
-
-        # Get the token
-        refresh = self.get_token(user)
-
-        data = {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'status': True,
-            'message': 'Login successful.',
-            'user': {
-                'id': user.id,
-                'name': user.username,
-                'email': user.email,
-                'phone_number': user.phone_number,
-                'role': user.role,
+        return {
+            "status": True,
+            "message": "Login successful.",
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "role": user.role,
             }
         }
+    
+class VehicleTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VehicleType
+        fields = ['id', 'name']
 
-        return data
 
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        # Add custom claims
-        token['phone_number'] = user.phone_number
-        token['role'] = user.role
-        token['name'] = user.username
-        return token
+
+# serializers.py
+class DriverSerializer(serializers.ModelSerializer):
+    owner_name = serializers.CharField(source="owner.full_name", read_only=True)
+
+    class Meta:
+        model = Driver
+        fields = [
+            "id",
+            "full_name",
+            "phone_number",
+            "owner",
+            "owner_name",
+            "pan_document",
+            "aadhar_document",
+            "rc_document",
+            "profile_photo",
+            "status",
+            "is_active",
+            "created_at",
+
+            # stats
+            "total_trips",
+            "completed_trips",
+            "pending_trips",
+        ]
+        read_only_fields = ["id", "owner", "created_at"]
+
+
+
+class LoadDetailsSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.full_name", read_only=True)
+    created_by_phone = serializers.CharField(source="created_by.phone_number", read_only=True)
+    vehicle_type_name = serializers.CharField(source="vehicle_type.name", read_only=True)
+
+    commission = serializers.DecimalField(max_digits=12, decimal_places=2, source="price_per_unit", read_only=True)
+
+    # 👇 Add this
+    request_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Load
+        fields = [
+            "id",
+            "load_id",
+            "created_by_name",
+            "created_by_phone",
+            "vehicle_type_name",
+            "weight",
+            "price_per_unit",
+            "trip_status",
+            "commission",
+            "notes",
+            "request_status",   # 👈 added here
+        ]
+
+    # 👇 This method fetches vendor's request status
+    def get_request_status(self, obj):
+        vendor = self.context.get("vendor")  # coming from the view
+
+        if not vendor:
+            return None
+
+        req = obj.requests.filter(vendor=vendor).first()
+        if req:
+            return req.status  # pending / accepted / rejected
+
+        return None
+
+
+class LoadRequestSerializer(serializers.ModelSerializer):
+    vendor_name = serializers.CharField(source='vendor.full_name', read_only=True)
+    vendor_phone = serializers.CharField(source='vendor.phone_number', read_only=True)
+
+    class Meta:
+        model = LoadRequest
+        fields = ['id', 'load', 'vendor', 'vendor_name', 'vendor_phone', 'message', 'status', 'created_at']
+        read_only_fields = ['id', 'vendor', 'status', 'created_at']
+
+class VehicleSerializer(serializers.ModelSerializer):
+    owner_name = serializers.CharField(source="owner.full_name", read_only=True)
+    owner_phone = serializers.CharField(source="owner.phone_number", read_only=True)
+
+    class Meta:
+        model = Vehicle
+        fields = [
+            "id",
+            "reg_no",
+            "type",
+            "load_capacity",
+            "insurance_doc",
+            "rc_doc",
+            "status",
+            "created_at",
+            "owner_name",
+            "owner_phone",
+        ]
+
+class TripCommentSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.full_name', read_only=True)
+
+    class Meta:
+        model = TripComment
+        fields = [
+            'id', 'load', 'sender', 'sender_name',
+            'sender_type', 'comment', 'created_at', 'is_read'
+        ]
+        read_only_fields = ['sender', 'sender_type', 'created_at', 'is_read']
+
+class VendorAcceptedLoadDetailsSerializer(serializers.ModelSerializer):
+    created_by = serializers.SerializerMethodField()
+    creator_phone = serializers.SerializerMethodField()
+    vehicle_number = serializers.SerializerMethodField()
+    vehicle_type = serializers.SerializerMethodField()
+    request_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Load
+        fields = [
+            "id",
+            "pickup_location",
+            "drop_location",
+            "weight",
+            "price_per_unit",
+            "created_by",
+            "creator_phone",
+            "vehicle_number",
+            "vehicle_type",
+            "request_status",
+            "created_at",
+        ]
+
+    def get_created_by(self, obj):
+        return obj.created_by.full_name if obj.created_by else None
+
+    def get_creator_phone(self, obj):
+        return obj.created_by.phone_number if obj.created_by else None
+
+    def get_vehicle_number(self, obj):
+        return obj.vehicle.reg_no if obj.vehicle else None
+
+    def get_vehicle_type(self, obj):
+        return obj.vehicle_type.name if obj.vehicle_type else None
+
+    def get_request_status(self, obj):
+        vendor = self.context.get("vendor")
+        req = obj.requests.filter(vendor=vendor).first()
+        return req.status if req else None
+    
+class VendorTripDetailsSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.full_name", read_only=True)
+    created_by_phone = serializers.CharField(source="created_by.phone_number", read_only=True)
+
+    vehicle_number = serializers.SerializerMethodField()
+    vehicle_type = serializers.SerializerMethodField()
+
+    driver_name = serializers.CharField(source="driver.full_name", read_only=True)
+    driver_phone = serializers.CharField(source="driver.phone_number", read_only=True)
+
+    documents = serializers.SerializerMethodField()
+    timeline = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Load
+        fields = [
+            "id",
+            "load_id",
+
+            "pickup_location",
+            "drop_location",
+            "pickup_date",
+            "time",
+            "weight",
+            "price_per_unit",
+
+            "trip_status",
+            "status",
+
+            # creator
+            "created_by_name",
+            "created_by_phone",
+
+            # vehicle
+            "vehicle_number",
+            "vehicle_type",
+
+            # driver
+            "driver_name",
+            "driver_phone",
+
+            # attachments
+            "documents",
+
+            # timeline
+            "timeline",
+
+            "created_at",
+        ]
+
+    def get_vehicle_number(self, obj):
+        return obj.vehicle.reg_no if obj.vehicle else None
+
+    def get_vehicle_type(self, obj):
+        return obj.vehicle_type.name if obj.vehicle_type else None
+
+    def get_documents(self, obj):
+        return {
+            "lr_document": obj.lr_document.url if obj.lr_document else None,
+            "pod_document": obj.pod_document.url if obj.pod_document else None,
+        }
+
+    def get_timeline(self, obj):
+        return {
+            "trip_requested": obj.created_at,
+            "loaded": obj.loaded_at,
+            "lr_uploaded": obj.lr_uploaded_at,
+            "first_half_payment": obj.first_half_payment_at,
+            "in_transit": obj.in_transit_at,
+            "unloading": obj.unloading_at,
+            "pod_uploaded": obj.pod_uploaded_at,
+            "payment_completed": obj.payment_completed_at,
+        }
+
+class LRUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Load
+        fields = ["lr_document"]
+
+
+class PODUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Load
+        fields = ["pod_document"]
+

@@ -10,17 +10,37 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Load Management</title>
 
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <!-- Google Fonts: Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
   <link rel="stylesheet" href="{% static 'css/load_management.css' %}">
-
-  <!-- Toastify CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <style>
+    .route-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      color: #374151;
+    }
+    .route-arrow {
+      color: #dc2626;
+      font-size: 14px;
+    }
+    .datetime-display {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .date-display {
+      font-weight: 500;
+      color: #111827;
+    }
+    .time-display {
+      font-size: 12px;
+      color: #6b7280;
+    }
+  </style>
 </head>
 <body>
 <div class="dashboard">
@@ -40,9 +60,8 @@
       <thead>
         <tr>
           <th>Load ID</th>
-          <th>Customer</th>
           <th>Route</th>
-          <th>Date</th>
+          <th>Date & Time</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -50,37 +69,51 @@
       <tbody>
         {% if loads %}
           {% for load in loads %}
-          <tr class="clickable-row" data-load-id="{{ load.id }}"
-              data-load='{
-                "load_id": "{{ load.load_id }}",
-                "pickup": "{{ load.pickup_location }}",
-                "drop": "{{ load.drop_location }}",
-                "vehicle_type": "{{ load.vehicle_type.name }}",
-                "date": "{{ load.pickup_date|date:"M d, Y" }}",
-                "material": "{{ load.material|default:"-" }}",
-                "weight": "{{ load.weight }}",
-                "driver_name": "{{ load.driver.name|default:"-" }}",
-                "driver_phone": "{{ load.driver.phone|default:"-" }}",
-                "status_display": "{{ load.get_status_display }}"
-              }'>
-            <td>{{ load.load_id }}</td>
-            <td>{{ load.customer.customer_name }}</td>
-            <td>{{ load.pickup_location }} to {{ load.drop_location }}</td>
-            <td>{{ load.pickup_date|date:"M d, Y" }}</td>
-            <td><span class="status-badge status-{{ load.status }}">{{ load.get_status_display }}</span></td>
-            <td class="action-col">
-              <div class="action-buttons">
-                <button class="action-view" title="View"><i class="fas fa-eye"></i></button>
-                <button class="action-edit" title="Edit"><i class="fas fa-edit"></i></button>
-                <button class="action-delete" data-load-id="{{ load.id }}" title="Delete"><i class="fas fa-trash"></i></button>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
+<tr class="clickable-row" data-load-id="{{ load.id }}"
+    data-load='{
+        "load_id": "{{ load.load_id }}",
+        "pickup": "{{ load.pickup_location }}",
+        "drop": "{{ load.drop_location }}",
+        "vehicle_type": "{{ load.vehicle_type.name }}",
+        "date": "{{ load.pickup_date|date:'M d, Y' }}",
+        "time": "{{ load.time|default:'' }}",
+        "material": "{{ load.material|default:'-' }}",
+        "weight": "{{ load.weight }}",
+        "driver_name": "{{ load.driver.full_name|default:'-' }}",
+        "driver_phone": "{{ load.driver.phone_number|default:'-' }}",
+        "status": "{{ load.status }}",
+        "status_display": "{{ load.get_status_display }}"
+    }'>
+    <td style="color:var(--primary); font-weight: 1000;">{{ load.load_id }}</td>
+    <td>
+        <div class="route-display">
+            <span>{{ load.pickup_location }}</span>
+            <i class="fas fa-arrow-right route-arrow"></i>
+            <span>{{ load.drop_location }}</span>
+        </div>
+    </td>
+    <td>
+        <div class="datetime-display">
+            <span class="date-display">{{ load.pickup_date|date:"M d, Y" }}</span>
+            {% if load.time %}
+                <span class="time-display">{{ load.time }}</span>
+            {% endif %}
+        </div>
+    </td>
+    <td>
+        <span class="status-badge status-{{ load.status }}">{{ load.get_status_display }}</span>
+    </td>
+    <td class="action-col">
+        <div class="action-buttons">
+            <button class="action-view" title="View"><i class="fas fa-eye"></i></button>
+            <button class="action-edit" title="Edit"><i class="fas fa-edit"></i></button>
+            <button class="action-delete" data-load-id="{{ load.id }}" title="Delete"><i class="fas fa-trash"></i></button>
+        </div>
+    </td>
+</tr>
+{% endfor %}
         {% else %}
-          <tr><td colspan="6" style="text-align:center;padding:60px;color:#6b7280;font-size:15px;">
-            No loads found. Click "+ Add Load" to get started.
-          </td></tr>
+          <tr><td colspan="5" style="text-align:center;padding:40px;color:#6b7280;">No loads found.</td></tr>
         {% endif %}
       </tbody>
     </table>
@@ -108,205 +141,116 @@
     </div>
   </div>
 
-  <!-- ADD LOAD MODAL -->
-  <div id="addModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Add New Load</h3>
-        <button class="modal-close" id="closeAddModal">×</button>
-      </div>
-      
-      <p class="modal-subtitle">Fill the details below to add a new load.</p>
-
-      <form id="addLoadForm" class="modal-form">
-        {% csrf_token %}
-        <h4 class="section-title">Customer Details</h4>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Customer Name <span class="required">*</span></label>
-            <select name="customer" id="customerSelect" required>
-              <option value="" disabled selected>Select customer</option>
-              {% for customer in customers %}
-              <option value="{{ customer.id }}" 
-                      data-contact-person="{{ customer.contact_person_name|default:'' }}"
-                      data-contact-phone="{{ customer.contact_person_phone|default:'' }}"
-                      data-phone="{{ customer.phone_number }}">
-                {{ customer.customer_name }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Contact Person Name</label>
-            <input type="text" name="contactPersonName" id="contactPersonName" readonly style="background-color: #f9fafb;">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Contact Person Phone</label>
-            <input type="text" name="contactPersonPhone" id="contactPersonPhone" readonly style="background-color: #f9fafb;">
-          </div>
-        </div>
-        <h4 class="section-title">Vehicle Requirements</h4>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Vehicle Type <span class="required">*</span></label>
-            <select name="vehicleType" required>
-              <option value="" disabled selected>Select vehicle type</option>
-              {% for vtype in vehicle_types %}
-              <option value="{{ vtype.id }}">{{ vtype.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Weight <span class="required">*</span></label>
-            <input type="text" name="weight" placeholder="e.g. 20 Ton, 15.5T" required>
-          </div>
-        </div>
-        <h4 class="section-title">Route & Schedule</h4>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Pickup Location <span class="required">*</span></label>
-            <input type="text" name="pickupLocation" required>
-          </div>
-          <div class="form-group">
-            <label>Drop Location <span class="required">*</span></label>
-            <input type="text" name="dropLocation" required>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Pickup Date <span class="required">*</span></label>
-            <input type="date" name="pickupDate" required>
-          </div>
-          <div class="form-group">
-            <label>Arrival Date</label>
-            <input type="date" name="dropDate">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Time <span class="required">*</span></label>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="text" id="timeInput" placeholder="02:30" maxlength="5" style="width:100px;" required>
-              <select id="ampmSelect">
-                <option value="AM">AM</option>
-                <option value="PM" selected>PM</option>
-              </select>
-              <input type="hidden" name="time" id="hiddenTimeInput">
-            </div>
-          </div>
-        </div>
-        <h4 class="section-title">Pricing & Others</h4>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Price Per Unit (₹) <span class="required">*</span></label>
-            <input type="text" name="pricePerUnit" placeholder="e.g. 850" required>
-          </div>
-          <div class="form-group">
-            <label>Material</label>
-            <input type="text" name="material" placeholder="Sand, Cement, etc.">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label>Notes</label>
-            <textarea name="notes" rows="3" placeholder="Any additional info..."></textarea>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="submit" class="save-btn">Save Load</button>
-          <button type="button" class="cancel-btn" id="cancelAddModal">Cancel</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- RIGHT SIDEBAR -->
+  <!-- RIGHT SIDEBAR - Reduced Width -->
   <div id="profileSidebar">
     <button class="close-btn" id="closeSidebar">×</button>
 
     <!-- Header -->
-    <div style="padding:24px 20px 0;">
-      <h3 id="sidebarLoadId" style="margin:0 0 8px;font-size:20px;font-weight:600;color:#111827;"></h3>
-      <p id="sidebarStatus" style="margin:0;color:#6b7280;font-size:14px;"></p>
+    <div class="sidebar-section">
+      <div class="sidebar-header">
+        <h3 id="sidebarLoadId"></h3>
+        <p id="sidebarStatus"></p>
+      </div>
     </div>
 
-    <!-- Route Bar -->
-    <div style="padding:16px 20px;">
-      <div style="background:#f9fafb;border-radius:8px;padding:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div id="sidebarPickup" style="font-size:13px;color:#374151;font-weight:500;"></div>
+    <!-- Route -->
+    <div class="sidebar-section">
+      <div class="route-container">
+        <div class="route-info">
+          <div class="route-locations">
+            <div id="sidebarPickup"></div>
             <i class="fas fa-arrow-right" style="color:#dc2626;font-size:14px;"></i>
-            <div id="sidebarDrop" style="font-size:13px;color:#374151;font-weight:500;"></div>
+            <div id="sidebarDrop"></div>
           </div>
           <i class="fas fa-truck" style="color:#dc2626;font-size:18px;"></i>
         </div>
-        <div style="height:4px;background:#fee2e2;border-radius:2px;position:relative;overflow:hidden;">
-          <div id="progressBar" style="width:68%;height:100%;background:#dc2626;border-radius:2px;"></div>
-          <i class="fas fa-car-side" style="position:absolute;top:-8px;left:65%;color:#dc2626;font-size:20px;"></i>
+        <div class="progress-container">
+          <div class="progress-bar"></div>
+          <i class="fas fa-car-side progress-icon"></i>
         </div>
       </div>
     </div>
 
-    <!-- Trip Requests -->
-    <div style="padding:0 20px;">
-      <h4 style="margin:20px 0 16px;font-size:15px;font-weight:600;color:#111827;">Trip requests by owner</h4>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f3f4f6;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#6b7280;">JM</div>
-          <div><div style="font-size:14px;font-weight:500;color:#111827;">John Michael</div><div style="font-size:12px;color:#6b7280;">+91 98765 4321</div></div>
+    <!-- TRIP REQUESTS -->
+    <div class="sidebar-section">
+      <h4>Trip Requests By Owner</h4>
+      <div id="tripRequestsContainer" class="trip-requests-container">
+        <div style="text-align:center;padding:40px 20px;color:#6b7280;font-size:14px;">
+          Select a load to view trip requests
         </div>
-        <i class="fas fa-check-circle" style="color:#16a34a;font-size:20px;"></i>
       </div>
     </div>
 
-    <!-- Trip Information -->
-    <div style="padding:20px;background:#fafafa;margin:20px 0;">
-      <h4 style="margin:0 0 16px;font-size:15px;font-weight:600;color:#111827;">Trip Information</h4>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:14px;">
-        <div><div style="color:#6b7280;margin-bottom:4px;">Vehicle Type</div><div id="sidebarVehicleType" style="font-weight:500;color:#111827;"></div></div>
-        <div><div style="color:#6b7280;margin-bottom:4px;">Date</div><div id="sidebarDate" style="font-weight:500;color:#111827;"></div></div>
-        <div><div style="color:#6b7280;margin-bottom:4px;">Material</div><div id="sidebarMaterial" style="font-weight:500;color:#111827;"></div></div>
-        <div><div style="color:#6b7280;margin-bottom:4px;">Weight</div><div id="sidebarWeight" style="font-weight:500;color:#111827;"></div></div>
+    <!-- CONFIRM ASSIGNMENT PANEL -->
+    <div id="confirmAssignmentPanel" class="confirm-panel" style="display:none;">
+      <h4>Assign Vehicle & Driver</h4>
+      
+      <!-- Dropdowns -->
+      <div class="form-grid">
+        <div class="form-group">
+          <select id="vehicleTypeSelect"><option value="">Select vehicle</option></select>
+          <button type="button" id="openAddVehicleModal" style="margin-top:6px;color:#dc2626;background:none;border:none;font-size:13px;font-weight:500;cursor:pointer;text-decoration:underline;">
+            + New Vehicle
+          </button>
+        </div>
+        <div class="form-group">
+          <select id="driverSelect"><option value="">Select Driver</option></select>
+          <button type="button" id="openAddDriverModalBtn" style="margin-top:6px;color:#dc2626;background:none;border:none;font-size:13px;font-weight:500;cursor:pointer;text-decoration:underline;">
+            + New Driver
+          </button>
+        </div>
       </div>
-      <div style="margin-top:20px;padding-top:16px;border-top:1px dashed #e5e7eb;">
-        <div style="font-size:14px;color:#6b7280;margin-bottom:8px;">Driver Details</div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div id="driverAvatar" style="width:36px;height:36px;border-radius:50%;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;"></div>
-          <div>
-            <div id="sidebarDriverName" style="font-weight:500;color:#111827;"></div>
-            <div id="sidebarDriverPhone" style="font-size:13px;color:#dc2626;"></div>
-          </div>
+
+      <!-- Confirm Button -->
+      <button id="finalConfirmBtn" class="confirm-btn">
+        Confirm Assignment
+      </button>
+    </div>
+
+    <!-- Trip Info -->
+    <div class="sidebar-section" style="background:#fafafa;">
+      <h4>Trip Information</h4>
+      <div class="trip-info-grid">
+        <div>
+          <div class="trip-info-label">Vehicle Type</div>
+          <div id="sidebarVehicleType" class="trip-info-value"></div>
+        </div>
+        <div>
+          <div class="trip-info-label">Date & Time</div>
+          <div id="sidebarDateTime" class="trip-info-value"></div>
+        </div>
+        <div>
+          <div class="trip-info-label">Material</div>
+          <div id="sidebarMaterial" class="trip-info-value"></div>
+        </div>
+        <div>
+          <div class="trip-info-label">Weight</div>
+          <div id="sidebarWeight" class="trip-info-value"></div>
         </div>
       </div>
     </div>
 
     <!-- Chat -->
-    <div class="chat-container">
+    <div class="sidebar-section chat-container">
       <h4 class="chat-header">Chat</h4>
       <div class="chat-messages">
-        <div class="chat-message admin">
+        <div class="chat-message">
           <div class="chat-label">Admin</div>
           <div class="chat-bubble admin">Driver confirmed departure from Mumbai warehouse.</div>
           <div class="chat-time">Dec 21, 10:30 AM</div>
         </div>
-        <div class="chat-message owner">
-          <div class="chat-label">Owner</div>
-          <div class="chat-bubble owner">Taking rest at Jaipur. Will resume journey by 6 PM.</div>
-          <div class="chat-time">Dec 22, 2:15 PM</div>
-        </div>
       </div>
       <div class="chat-input-container">
         <input type="text" class="chat-input" placeholder="Type a comment">
-        <button class="chat-send-btn"><i class="fas fa-paper-plane"></i></button>
+        <button class="chat-send-btn">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
       </div>
     </div>
 
     <!-- Close Trip Button -->
-    <div style="padding:20px;border-top:1px solid #f3f4f6;background:#fff;position:sticky;bottom:0;">
-      <button style="width:100%;background:#16a34a;color:#fff;border:none;padding:14px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(22,163,74,.3);font-family:'Inter',sans-serif;">
+    <div class="sidebar-section">
+      <button class="close-trip-btn">
         Close Trip
       </button>
     </div>
@@ -314,386 +258,863 @@
   <div id="sidebarOverlay"></div>
 </div>
 
-<!-- Toastify JS -->
+<!-- ====================== ADD LOAD MODAL (FINAL VERSION) ====================== -->
+<div id="addLoadModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create New Load</h3>
+      <button class="modal-close" id="closeLoadModal">×</button>
+    </div>
+    <p class="modal-subtitle">Fill in the details below to create a new load request</p>
+
+    <form id="addLoadForm" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Load Info -->
+      <div class="section-header" style="margin: 0 32px 20px;">
+        <i class="fas fa-info-circle"></i> Load Info
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Customer <span class="required">*</span></label>
+          <select name="customer" id="customerSelect" required>
+            <option value="">Select Customer</option>
+            {% for customer in customers %}
+            <option value="{{ customer.id }}"
+                    data-contact-person="{{ customer.contact_person_name|default:'' }}"
+                    data-contact-phone="{{ customer.contact_person_phone|default:'' }}">
+              {{ customer.customer_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Contact Person</label>
+          <input type="text" name="contactPersonName" id="contactPersonName" readonly style="background:#f9fafb;">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contact Phone</label>
+          <input type="tel" name="contactPersonPhone" id="contactPersonPhone" readonly style="background:#f9fafb;">
+        </div>
+        <div class="form-group">
+          <label>Vehicle Type <span class="required">*</span></label>
+          <select name="vehicleType" required>
+            <option value="">Select Vehicle Type</option>
+            {% for vehicle_type in vehicle_types %}
+            <option value="{{ vehicle_type.id }}">{{ vehicle_type.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Route & Schedule -->
+      <div class="section-header" style="margin: 24px 32px 20px;">
+        <i class="fas fa-route"></i> Route & Schedule
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Pickup Location <span class="required">*</span></label>
+          <input type="text" name="pickupLocation" required placeholder="e.g. Mumbai Port">
+        </div>
+        <div class="form-group">
+          <label>Drop Location <span class="required">*</span></label>
+          <input type="text" name="dropLocation" required placeholder="e.g. Delhi Warehouse">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Pickup Date <span class="required">*</span></label>
+          <input type="date" name="pickupDate" id="pickupDate" required>
+        </div>
+        <div class="form-group">
+          <label>Drop Date</label>
+          <input type="date" name="dropDate">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Time <span class="required">*</span></label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="text" id="timeInput" placeholder="02:30" maxlength="5" style="width:100px;" required>
+            <select id="ampmSelect">
+              <option value="AM">AM</option>
+              <option value="PM" selected>PM</option>
+            </select>
+            <input type="hidden" name="time" id="hiddenTimeInput">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Material</label>
+          <input type="text" name="material" placeholder="e.g. Cement, Rice">
+        </div>
+      </div>
+
+      <!-- Weight (Just for reference) -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Weight (Optional)</label>
+          <input type="text" name="weight" placeholder="e.g. 20 Ton">
+          <small style="color:#6b7280;">Only for display</small>
+        </div>
+        <div class="form-group"></div>
+      </div>
+
+      <!-- TOTAL AMOUNT INPUT (This is what user enters) -->
+      <div class="section-header" style="margin: 24px 32px 20px; color:#16a34a;">
+        <i class="fas fa-rupee-sign"></i> Trip Amount (90-10 Split)
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Total Trip Amount <span class="required">*</span></label>
+          <input type="number" 
+                 name="total_amount" 
+                 id="totalAmountInput"
+                 step="1" 
+                 min="1000" 
+                 required 
+                 placeholder="100000"
+                 style="font-size:18px; font-weight:600;">
+          <small style="color:#374151;">Enter full freight amount</small>
+        </div>
+      </div>
+
+      <!-- Auto-calculated 90-10 Split -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Half Payment (90%)</label>
+          <input type="text" id="firstHalfDisplay" readonly 
+                 value="₹ 0" 
+                 style="background:#f0fdf4; color:#16a34a; font-weight:bold; font-size:16px;">
+        </div>
+        <div class="form-group">
+          <label>Final Payment (10%)</label>
+          <input type="text" id="finalPaymentDisplay" readonly 
+                 value="₹ 0" 
+                 style="background:#fef2f2; color:#dc2626; font-weight:bold; font-size:16px;">
+        </div>
+      </div>
+
+      <!-- Hidden fields for backend -->
+      <input type="hidden" name="first_half_payment" id="hiddenFirstHalf">
+      <input type="hidden" name="final_payment" id="hiddenFinalPayment">
+
+      <!-- Notes -->
+      <div class="section-header" style="margin: 24px 32px 20px;">
+        <i class="fas fa-sticky-note"></i> Notes
+      </div>
+      <div class="form-row single-column">
+        <div class="form-group full-width">
+          <label>Additional Notes</label>
+          <textarea name="notes" rows="3" placeholder="Any special instructions..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" id="cancelLoadModal">Cancel</button>
+        <button type="submit" class="save-btn">Save Load</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ====================== ADD DRIVER MODAL ====================== -->
+<div id="addDriverModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Add New Driver</h3>
+      <button class="modal-close" id="closeDriverModal">×</button>
+    </div>
+    <p class="modal-subtitle">Add a new driver to this vendor's fleet</p>
+
+    <form id="quickAddDriverForm" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="vendor_id" id="quickDriverVendorId">
+
+      <!-- Personal Info Section -->
+      <div class="section-header" style="margin: 0 32px 20px;">
+        <i class="fas fa-user"></i>
+        Personal Information
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>
+            Full Name <span class="required">*</span>
+          </label>
+          <input type="text" name="full_name" required placeholder="Enter driver's full name">
+        </div>
+        <div class="form-group">
+          <label>
+            Phone Number <span class="required">*</span>
+          </label>
+          <input type="tel" name="phone_number" required placeholder="10-digit mobile number">
+        </div>
+        
+      </div>
+
+    
+
+      <!-- Documents Section -->
+      <div class="section-header" style="margin: 24px 32px 20px;">
+        <i class="fas fa-file-alt"></i>
+        Documents
+      </div>
+
+      <div class="form-row single-column">
+        <div class="form-group full-width">
+          <label>PAN Card Document</label>
+          <div class="file-upload-area" id="panUploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Drag and drop files here or <span class="browse-link" data-input="panDocument">Browse Files</span></p>
+            <input type="file" id="panDocument" name="pan_document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <span id="panFileName" class="file-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row single-column">
+        <div class="form-group full-width">
+          <label>Aadhar Card Document</label>
+          <div class="file-upload-area" id="aadharUploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Drag and drop files here or <span class="browse-link" data-input="aadharDocument">Browse Files</span></p>
+            <input type="file" id="aadharDocument" name="aadhar_document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <span id="aadharFileName" class="file-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row single-column">
+        <div class="form-group full-width">
+          <label>Driving License Document</label>
+          <div class="file-upload-area" id="licenseUploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Drag and drop files here or <span class="browse-link" data-input="licenseDocument">Browse Files</span></p>
+            <input type="file" id="licenseDocument" name="license_document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <span id="licenseFileName" class="file-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" id="cancelDriverModal">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button type="submit" class="save-btn">
+          <i class="fas fa-check"></i>
+          Save Driver
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ====================== ADD VEHICLE MODAL ====================== -->
+<div id="addVehicleModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Add New Vehicle</h3>
+      <button class="modal-close" id="closeVehicleModal">×</button>
+    </div>
+    <p class="modal-subtitle">Add a new vehicle to this vendor's fleet</p>
+
+    <form id="quickAddVehicleForm" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="vendor_id" id="quickVehicleVendorId">
+
+      <!-- Vehicle Details Section -->
+      <div class="section-header" style="margin: 0 32px 20px;">
+        <i class="fas fa-truck"></i>
+        Vehicle Details
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>
+            Registration Number <span class="required">*</span>
+          </label>
+          <input type="text" name="reg_no" required placeholder="e.g. TN45AB1234" style="text-transform: uppercase;">
+        </div>
+        <div class="form-group">
+          <label>
+            Vehicle Type <span class="required">*</span>
+          </label>
+          <select name="vehicle_type" required>
+            <option value="">Select Vehicle Type</option>
+            {% for vehicle_type in vehicle_types %}
+            <option value="{{ vehicle_type.id }}">{{ vehicle_type.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Documents Section -->
+      <div class="section-header" style="margin: 24px 32px 20px;">
+        <i class="fas fa-file-alt"></i>
+        Vehicle Documents
+      </div>
+
+      <div class="form-row single-column">
+        <div class="form-group full-width">
+          <label>Insurance Document</label>
+          <div class="file-upload-area" id="insuranceUploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Drag and drop files here or <span class="browse-link" data-input="insuranceDocument">Browse Files</span></p>
+            <input type="file" id="insuranceDocument" name="insurance_document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <span id="insuranceFileName" class="file-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row single-column">
+        <div class="form-group full-width">
+          <label>RC (Registration Certificate) Document</label>
+          <div class="file-upload-area" id="rcUploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Drag and drop files here or <span class="browse-link" data-input="rcDocument">Browse Files</span></p>
+            <input type="file" id="rcDocument" name="rc_document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <span id="rcFileName" class="file-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" id="cancelVehicleModal">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button type="submit" class="save-btn">
+          <i class="fas fa-check"></i>
+          Save Vehicle
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-
 <script>
+// Global variables
+let currentLoadId = null;
+let selectedRequestId = null;
+let currentVendorId = null;
+let csrftoken = null;
+
 document.addEventListener('DOMContentLoaded', function () {
-  console.log('🚀 Load Management System Loaded');
-
-  // === TOAST HELPER ===
-  function showToast(text, type = 'info') {
-    const colors = {
-      success: '#16a34a',
-      error: '#dc2626',
-      info: '#2563eb',
-      warning: '#d97706'
-    };
-    Toastify({
-      text: text,
-      duration: 3500,
-      close: true,
-      gravity: "top",
-      position: "right",
-      backgroundColor: colors[type],
-      stopOnFocus: true,
-    }).showToast();
-  }
-
-  // === CSRF TOKEN ===
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
-  }
-  const csrftoken = getCookie('csrftoken');
-  console.log('🔒 CSRF Token:', csrftoken ? 'Found' : 'NOT FOUND');
-
-  // === ELEMENTS ===
-  const table = document.getElementById('loadTable');
-  const tbody = table.querySelector('tbody');
-  const openAddModalBtn = document.getElementById('openAddModal');
-  const addModal = document.getElementById('addModal');
-  const closeAddModalBtn = document.getElementById('closeAddModal');
-  const cancelAddModalBtn = document.getElementById('cancelAddModal');
-  const addForm = document.getElementById('addLoadForm');
-  const customerSelect = document.getElementById('customerSelect');
-  const contactPersonName = document.getElementById('contactPersonName');
-  const contactPersonPhone = document.getElementById('contactPersonPhone');
+  csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
   const sidebar = document.getElementById('profileSidebar');
   const overlay = document.getElementById('sidebarOverlay');
-  const closeBtn = document.getElementById('closeSidebar');
+  const tripRequestsContainer = document.getElementById('tripRequestsContainer');
+  const confirmPanel = document.getElementById('confirmAssignmentPanel');
+  const vehicleTypeSelect = document.getElementById('vehicleTypeSelect');
+  const driverSelect = document.getElementById('driverSelect');
+
+  // Modal elements
+  const addLoadModal = document.getElementById('addLoadModal');
+  const addDriverModal = document.getElementById('addDriverModal');
+  const addVehicleModal = document.getElementById('addVehicleModal');
+
+  const openAddModalBtn = document.getElementById('openAddModal');
+  const closeLoadModal = document.getElementById('closeLoadModal');
+  const cancelLoadModal = document.getElementById('cancelLoadModal');
+  const openAddDriverModalBtn = document.getElementById('openAddDriverModalBtn');
+  const openAddVehicleModalBtn = document.getElementById('openAddVehicleModal');
+
+  function showToast(text, type = 'info') {
+    const colors = { success: '#16a34a', error: '#dc2626', info: '#2563eb' };
+    Toastify({ text, duration: 3000, gravity: "top", position: "right", backgroundColor: colors[type] }).showToast();
+  }
+
+  // ====================== 90-10 PAYMENT SPLIT (CORRECTED IDs) ======================
+function calculatePaymentSplit() {
+  const totalInput = document.getElementById('totalAmountInput');
+  const firstHalfDisplay = document.getElementById('firstHalfDisplay');        // ← Fixed
+  const finalDisplay = document.getElementById('finalPaymentDisplay');         // ← Fixed
+  const hiddenFirstHalf = document.getElementById('hiddenFirstHalf');          // ← Fixed
+  const hiddenFinalPayment = document.getElementById('hiddenFinalPayment');    // ← Fixed
+
+  if (!totalInput || !firstHalfDisplay || !finalDisplay) return;
+
+  const total = parseFloat(totalInput.value) || 0;
+
+  if (total > 0) {
+    const firstHalf = Math.round(total * 0.9);
+    const finalPayment = total - firstHalf; // exact 10%
+
+    firstHalfDisplay.value = '₹ ' + firstHalf.toLocaleString('en-IN');
+    finalDisplay.value = '₹ ' + finalPayment.toLocaleString('en-IN');
+
+    hiddenFirstHalf.value = firstHalf;
+    hiddenFinalPayment.value = finalPayment;
+  } else {
+    firstHalfDisplay.value = '₹ 0';
+    finalDisplay.value = '₹ 0';
+    hiddenFirstHalf.value = '';
+    hiddenFinalPayment.value = '';
+  }
+}
+
+// Trigger on modal open + real-time typing
+document.getElementById('openAddModal')?.addEventListener('click', function () {
+  document.getElementById('addLoadModal').style.display = 'flex';
+  
+  setTimeout(() => {
+    const totalInput = document.getElementById('totalAmountInput');
+    if (totalInput) {
+      totalInput.focus();
+      // Remove old listener if exists
+      totalInput.removeEventListener('input', calculatePaymentSplit);
+      totalInput.addEventListener('input', calculatePaymentSplit);
+      calculatePaymentSplit(); // initial
+    }
+  }, 150);
+});
+
+  // Trigger calculation when modal opens & on input
+  openAddModalBtn?.addEventListener('click', function () {
+    addLoadModal.style.display = 'flex';
+    setTimeout(() => {
+      const totalInput = document.getElementById('totalAmountInput');
+      if (totalInput) {
+        totalInput.focus();
+        totalInput.addEventListener('input', calculatePaymentSplit);
+        calculatePaymentSplit(); // Initial calc
+      }
+    }, 100);
+  });
+
+  // ====================== CUSTOMER AUTO-FILL ======================
+  document.getElementById('customerSelect')?.addEventListener('change', function () {
+    const selected = this.options[this.selectedIndex];
+    document.getElementById('contactPersonName').value = selected.dataset.contactPerson || '';
+    document.getElementById('contactPersonPhone').value = selected.dataset.contactPhone || '';
+  });
+
+  // ====================== TIME INPUT FORMAT ======================
   const timeInput = document.getElementById('timeInput');
   const ampmSelect = document.getElementById('ampmSelect');
   const hiddenTimeInput = document.getElementById('hiddenTimeInput');
-  const searchInput = document.getElementById('searchInput');
-  const entriesSelect = document.getElementById('entriesPerPage');
-  const showingStart = document.getElementById('showingStart');
-  const showingEnd = document.getElementById('showingEnd');
-  const totalEntries = document.getElementById('totalEntries');
-  const prevBtn = document.getElementById('prevPage');
-  const nextBtn = document.getElementById('nextPage');
-  const currentPageInfo = document.getElementById('currentPageInfo');
 
-  let currentPage = 1;
-  let perPage = parseInt(entriesSelect.value, 10);
-  let allRows = [];
-  let filteredRows = [];
-
-  // === INITIAL DATA SETUP ===
-  function initRows() {
-    allRows = Array.from(tbody.querySelectorAll('tr.clickable-row'));
-    filteredRows = [...allRows];
-    renderPage();
-  }
-
-  // === SEARCH ===
-  searchInput.addEventListener('input', function () {
-    const term = this.value.toLowerCase();
-    filteredRows = allRows.filter(row => 
-      row.textContent.toLowerCase().includes(term)
-    );
-    currentPage = 1;
-    renderPage();
-  });
-
-  // === CUSTOMER AUTOFILL ===
-  customerSelect.addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    
-    if (selectedOption.value) {
-      const contactPerson = selectedOption.getAttribute('data-contact-person');
-      const contactPhone = selectedOption.getAttribute('data-contact-phone');
-      
-      contactPersonName.value = contactPerson || '';
-      contactPersonPhone.value = contactPhone || '';
-    } else {
-      contactPersonName.value = '';
-      contactPersonPhone.value = '';
-    }
-  });
-
-  // === TIME INPUT HANDLING ===
-  timeInput.addEventListener('input', function(e) {
-    let value = e.target.value.replace(/[^\d]/g, '');
-    
-    if (value.length >= 2) {
-      value = value.substring(0, 2) + ':' + value.substring(2, 4);
-    }
-    
-    e.target.value = value.substring(0, 5);
-    updateHiddenTime();
-  });
-
-  ampmSelect.addEventListener('change', updateHiddenTime);
-
-  function updateHiddenTime() {
-    const timeValue = timeInput.value;
-    const ampmValue = ampmSelect.value;
-    if (timeValue) {
-      hiddenTimeInput.value = timeValue + ' ' + ampmValue;
-    }
-  }
-
-  // === MODAL FUNCTIONS ===
-  function showModal() {
-    addModal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    contactPersonName.value = '';
-    contactPersonPhone.value = '';
-  }
-
-  function hideModal() {
-    addModal.style.display = 'none';
-    document.body.style.overflow = 'auto';
-    addForm.reset();
-  }
-
-  openAddModalBtn.addEventListener('click', showModal);
-  closeAddModalBtn.addEventListener('click', hideModal);
-  cancelAddModalBtn.addEventListener('click', hideModal);
-  
-  addModal.addEventListener('click', function(e) {
-    if (e.target === addModal) {
-      hideModal();
-    }
-  });
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && addModal.style.display === 'flex') {
-      hideModal();
-    }
-  });
-
-  // === FORM SUBMISSION ===
-  addForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    console.log('📤 Form submission started');
-    
-    const formData = new FormData(addForm);
-    
-    const saveBtn = addForm.querySelector('.save-btn');
-    const originalText = saveBtn.textContent;
-    saveBtn.textContent = 'Saving...';
-    saveBtn.disabled = true;
-
-    fetch('{% url "add_load" %}', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-CSRFToken': csrftoken
-      }
-    })
-    .then(response => {
-      console.log('📥 Response status:', response.status);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log('📥 Response data:', data);
-      
-      if (data.success) {
-        showToast(data.message, 'success');
-        hideModal();
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-        
-      } else {
-        showToast(data.error || 'Failed to create load', 'error');
-        console.error('❌ Server returned error:', data.error);
-      }
-    })
-    .catch(error => {
-      console.error('❌ Fetch error:', error);
-      showToast('Network error: ' + error.message, 'error');
-    })
-    .finally(() => {
-      saveBtn.textContent = originalText;
-      saveBtn.disabled = false;
+  if (timeInput) {
+    timeInput.addEventListener('input', function (e) {
+      let v = e.target.value.replace(/\D/g, '');
+      if (v.length > 2) v = v.slice(0, 2) + ':' + v.slice(2, 4);
+      e.target.value = v.slice(0, 5);
+      if (hiddenTimeInput) hiddenTimeInput.value = v + ' ' + (ampmSelect?.value || 'PM');
     });
+  }
+  ampmSelect?.addEventListener('change', () => {
+    if (timeInput && hiddenTimeInput) {
+      hiddenTimeInput.value = timeInput.value + ' ' + ampmSelect.value;
+    }
   });
 
-  // === SIDEBAR FUNCTIONS ===
+  // ====================== DATE VALIDATION ======================
+  const pickupDate = document.getElementById('pickupDate');
+  const dropDate = document.getElementById('dropDate');
+  if (pickupDate) {
+    pickupDate.min = new Date().toISOString().split('T')[0];
+    pickupDate.addEventListener('change', () => {
+      if (dropDate) {
+        dropDate.min = pickupDate.value;
+        if (dropDate.value && dropDate.value < pickupDate.value) dropDate.value = pickupDate.value;
+      }
+    });
+  }
+
+  // ====================== SIDEBAR & TRIP REQUESTS ======================
   function openSidebar(row) {
     const data = JSON.parse(row.dataset.load);
+    currentLoadId = row.dataset.loadId;
 
     document.getElementById('sidebarLoadId').textContent = data.load_id;
     document.getElementById('sidebarStatus').textContent = data.status_display;
     document.getElementById('sidebarPickup').textContent = data.pickup;
     document.getElementById('sidebarDrop').textContent = data.drop;
     document.getElementById('sidebarVehicleType').textContent = data.vehicle_type;
-    document.getElementById('sidebarDate').textContent = data.date;
-    document.getElementById('sidebarMaterial').textContent = data.material;
-    document.getElementById('sidebarWeight').textContent = data.weight;
+    document.getElementById('sidebarDateTime').textContent = `${data.date} ${data.time || ''}`;
+    document.getElementById('sidebarMaterial').textContent = data.material || '-';
+    document.getElementById('sidebarWeight').textContent = data.weight || '-';
 
-    const driverName = data.driver_name;
-    const driverPhone = data.driver_phone;
-    document.getElementById('sidebarDriverName').textContent = driverName;
-    document.getElementById('sidebarDriverPhone').textContent = driverPhone;
-    
-    if (driverName && driverName !== '-') {
-      const initials = driverName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
-      document.getElementById('driverAvatar').textContent = initials;
-    } else {
-      document.getElementById('driverAvatar').textContent = '--';
-    }
+    confirmPanel.style.display = 'none';
+    loadTripRequests(currentLoadId);
 
     sidebar.classList.add('open');
     overlay.classList.add('show');
-    
-    document.querySelectorAll('.clickable-row').forEach(r => r.style.backgroundColor = '');
-    row.style.backgroundColor = '#f0f9ff';
+    document.querySelectorAll('.clickable-row').forEach(r => r.classList.remove('active'));
+    row.classList.add('active');
   }
 
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    overlay.classList.remove('show');
-    document.querySelectorAll('.clickable-row').forEach(r => r.style.backgroundColor = '');
+  function loadTripRequests(loadId) {
+    tripRequestsContainer.innerHTML = `<div style="text-align:center;padding:40px;color:#6b7280;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>`;
+
+    fetch(`/loads/${loadId}/requests/`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(requests => {
+        tripRequestsContainer.innerHTML = '';
+        const pending = (requests || []).filter(r => r.status === 'pending');
+
+        if (pending.length === 0) {
+          tripRequestsContainer.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;">No pending requests</div>`;
+          return;
+        }
+
+        pending.forEach(req => {
+          const initials = (req.vendor_name || 'NA').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          const div = document.createElement('div');
+          div.className = 'trip-request-item';
+          div.innerHTML = `
+            <div class="trip-request-info">
+              <div class="vendor-avatar">${initials}</div>
+              <div class="vendor-details">
+                <div>${req.vendor_name}</div>
+                <div>${req.vendor_phone}</div>
+              </div>
+            </div>
+            <div class="trip-request-actions">
+              <button class="accept-btn" data-id="${req.id}" data-vendor-id="${req.vendor_id}">
+                <i class="fas fa-check-circle" style="color:#16a34a"></i>
+              </button>
+              <button class="reject-btn" data-id="${req.id}">
+                <i class="fas fa-times-circle" style="color:#dc2626"></i>
+              </button>
+            </div>`;
+          tripRequestsContainer.appendChild(div);
+        });
+
+        // Accept Request
+        tripRequestsContainer.querySelectorAll('.accept-btn').forEach(btn => {
+          btn.onclick = () => {
+            selectedRequestId = btn.dataset.id;
+            currentVendorId = btn.dataset.vendorId;
+            populateDropdowns(currentVendorId);
+            confirmPanel.style.display = 'block';
+          };
+        });
+
+        // Reject Request
+        tripRequestsContainer.querySelectorAll('.reject-btn').forEach(btn => {
+          btn.onclick = () => {
+            if (confirm('Reject this request?')) {
+              fetch(`/loads/${loadId}/requests/${btn.dataset.id}/rejected/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken }
+              }).then(() => {
+                showToast('Request rejected', 'success');
+                loadTripRequests(loadId);
+              });
+            }
+          };
+        });
+      })
+      .catch(() => {
+        tripRequestsContainer.innerHTML = `<div style="text-align:center;padding:40px;color:#dc2626;">Error loading requests</div>`;
+      });
   }
 
-  table.addEventListener('click', function(e) {
-    if (e.target.closest('.action-col')) return;
-    const row = e.target.closest('.clickable-row');
-    if (row) openSidebar(row);
+  // Populate Vehicle & Driver dropdowns
+  function populateDropdowns(vendorId) {
+    vehicleTypeSelect.innerHTML = '<option>Loading vehicles...</option>';
+    driverSelect.innerHTML = '<option>Loading drivers...</option>';
+
+    Promise.all([
+      fetch(`/api/vendors/${vendorId}/vehicles/`).then(r => r.json()),
+      fetch(`/api/vendors/${vendorId}/drivers/`).then(r => r.json())
+    ]).then(([vehicles, drivers]) => {
+      vehicleTypeSelect.innerHTML = '<option value="">Select Vehicle</option>';
+      driverSelect.innerHTML = '<option value="">Select Driver</option>';
+
+      vehicles.forEach(v => {
+        const opt = new Option(v.reg_no, v.id);
+        vehicleTypeSelect.add(opt);
+      });
+      if (vehicles.length === 0) vehicleTypeSelect.add(new Option('No vehicles', ''));
+
+      drivers.forEach(d => {
+        const opt = new Option(`${d.full_name} - ${d.phone_number}`, d.id);
+        driverSelect.add(opt);
+      });
+      if (drivers.length === 0) driverSelect.add(new Option('No drivers', ''));
+    });
+  }
+
+  // Final Assignment
+  document.getElementById('finalConfirmBtn')?.addEventListener('click', function () {
+    const vehicleId = vehicleTypeSelect.value;
+    const driverId = driverSelect.value;
+
+    if (!vehicleId || !driverId) return showToast('Select vehicle & driver', 'error');
+
+    this.innerHTML = 'Assigning...';
+    this.disabled = true;
+
+    fetch(`/loads/${currentLoadId}/requests/${selectedRequestId}/accepted/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vehicle_id: vehicleId, driver_id: driverId })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showToast('Trip assigned successfully!', 'success');
+        document.querySelector(`.clickable-row[data-load-id="${currentLoadId}"]`)?.remove();
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+      } else {
+        showToast(data.error || 'Failed', 'error');
+      }
+      this.innerHTML = 'Confirm Assignment';
+      this.disabled = false;
+    });
   });
 
-  closeBtn.addEventListener('click', closeSidebar);
-  overlay.addEventListener('click', closeSidebar);
+  // Close sidebar
+  document.getElementById('closeSidebar')?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  });
+  overlay.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  });
 
-  // === ACTION BUTTONS ===
-  function attachActionListeners(row) {
-    row.querySelector('.action-view')?.addEventListener('click', function(e) {
-      e.stopPropagation();
+  // Row click → open sidebar
+  document.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('.action-col')) return;
       openSidebar(row);
     });
+  });
 
-    row.querySelector('.action-edit')?.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const loadId = row.querySelector('td:first-child').textContent;
-      showToast(`Edit functionality for ${loadId} – coming soon!`, 'info');
-    });
+  // Modal Close Buttons
+  closeLoadModal?.addEventListener('click', () => addLoadModal.style.display = 'none');
+  cancelLoadModal?.addEventListener('click', () => addLoadModal.style.display = 'none');
+  document.getElementById('closeDriverModal')?.addEventListener('click', () => addDriverModal.style.display = 'none');
+  document.getElementById('closeVehicleModal')?.addEventListener('click', () => addVehicleModal.style.display = 'none');
 
-    row.querySelector('.action-delete')?.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const loadId = this.getAttribute('data-load-id');
-      const loadIdText = row.querySelector('td:first-child').textContent;
+  // Quick Add Driver/Vehicle Modals
+  openAddDriverModalBtn?.addEventListener('click', () => {
+    if (!currentVendorId) return showToast('No vendor selected', 'error');
+    document.getElementById('quickDriverVendorId').value = currentVendorId;
+    addDriverModal.style.display = 'flex';
+  });
+  openAddVehicleModalBtn?.addEventListener('click', () => {
+    if (!currentVendorId) return showToast('No vendor selected', 'error');
+    document.getElementById('quickVehicleVendorId').value = currentVendorId;
+    addVehicleModal.style.display = 'flex';
+  });
 
-      if (!confirm(`Are you sure you want to delete load ${loadIdText}?`)) return;
+  // Add Load Form Submit
+  document.getElementById('addLoadForm')?.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const btn = this.querySelector('.save-btn');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = 'Saving...'; btn.disabled = true;
 
-      const originalHtml = this.innerHTML;
-      this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-      this.disabled = true;
-
-      fetch(`/loads/${loadId}/delete/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': csrftoken,
-          'Content-Type': 'application/json'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showToast(data.message, 'success');
-          row.remove();
-          allRows = allRows.filter(r => r !== row);
-          filteredRows = filteredRows.filter(r => r !== row);
-          renderPage();
-          closeSidebar();
-          
-          if (filteredRows.length === 0) {
-            showNoDataRow();
-          }
+    fetch('/loads/add/', { method: 'POST', headers: { 'X-CSRFToken': csrftoken }, body: formData })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          showToast('Load created successfully!', 'success');
+          addLoadModal.style.display = 'none';
+          setTimeout(() => location.reload(), 1500);
         } else {
-          showToast(data.error || 'Failed to delete load', 'error');
-          this.innerHTML = originalHtml;
-          this.disabled = false;
+          showToast(d.error || 'Failed', 'error');
         }
-      })
-      .catch(error => {
-        console.error('Delete error:', error);
-        showToast('Network error. Please try again.', 'error');
-        this.innerHTML = originalHtml;
-        this.disabled = false;
+        btn.innerHTML = oldText; btn.disabled = false;
       });
-    });
-  }
+  });
 
-  document.querySelectorAll('#loadTable tbody tr.clickable-row').forEach(attachActionListeners);
-
-  // === PAGINATION SYSTEM ===
-  function showNoDataRow() {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center;padding:60px;color:#6b7280;font-size:15px;">
-          No loads found. Click "+ Add Load" to get started.
-        </td>
-      </tr>`;
-  }
+  // Pagination & Search (unchanged)
+  const allRows = Array.from(document.querySelectorAll('tr.clickable-row'));
+  let filteredRows = [...allRows];
+  let currentPage = 1;
+  let perPage = 10;
 
   function renderPage() {
     const start = (currentPage - 1) * perPage;
     const end = start + perPage;
-
     allRows.forEach(r => r.style.display = 'none');
     filteredRows.slice(start, end).forEach(r => r.style.display = '');
-
-    const visibleEnd = Math.min(end, filteredRows.length);
-    showingStart.textContent = filteredRows.length ? start + 1 : 0;
-    showingEnd.textContent = visibleEnd;
-    totalEntries.textContent = filteredRows.length;
-
-    renderPaginationButtons();
+    document.getElementById('showingStart').textContent = filteredRows.length ? start + 1 : 0;
+    document.getElementById('showingEnd').textContent = Math.min(end, filteredRows.length);
+    document.getElementById('totalEntries').textContent = filteredRows.length;
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = end >= filteredRows.length;
+    document.getElementById('currentPageInfo').textContent = `Page ${currentPage}`;
   }
 
-  function renderPaginationButtons() {
-    const totalPages = Math.ceil(filteredRows.length / perPage);
-    currentPageInfo.textContent = `Page ${currentPage}`;
-    prevBtn.disabled = currentPage === 1;
-    nextBtn.disabled = currentPage === totalPages || totalPages === 0;
-  }
-
-  entriesSelect.addEventListener('change', function () {
-    perPage = parseInt(this.value, 10);
+  document.getElementById('searchInput')?.addEventListener('input', function () {
+    const term = this.value.toLowerCase();
+    filteredRows = allRows.filter(r => r.textContent.toLowerCase().includes(term));
     currentPage = 1;
     renderPage();
   });
 
-  prevBtn.addEventListener('click', () => {
-    if (currentPage > 1) {
-      currentPage--;
-      renderPage();
-    }
+  document.getElementById('entriesPerPage')?.addEventListener('change', function () {
+    perPage = +this.value;
+    currentPage = 1;
+    renderPage();
   });
 
-  nextBtn.addEventListener('click', () => {
-    const totalPages = Math.ceil(filteredRows.length / perPage);
-    if (currentPage < totalPages) {
-      currentPage++;
-      renderPage();
-    }
-  });
+  document.getElementById('prevPage')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPage(); } });
+  document.getElementById('nextPage')?.addEventListener('click', () => { if (currentPage * perPage < filteredRows.length) { currentPage++; renderPage(); } });
 
-  // === INITIALIZE ===
-  initRows();
-  console.log('✅ Initialization complete');
+  renderPage();
+});
+// ====================== FILE UPLOAD HANDLERS (Browse Files) ======================
+document.querySelectorAll('.browse-link').forEach(link => {
+    link.addEventListener('click', function () {
+        const inputId = this.dataset.input;
+        document.getElementById(inputId)?.click();
+    });
+});
+
+// Show selected file name
+document.querySelectorAll('input[type="file"]').forEach(input => {
+    input.addEventListener('change', function () {
+        const fileName = this.files[0]?.name || '';
+        const display = this.parentElement.querySelector('.file-name');
+        if (display) {
+            display.textContent = fileName || 'No file chosen';
+            display.style.color = fileName ? '#16a34a' : '#6b7280';
+        }
+    });
+});
+
+// ====================== QUICK ADD DRIVER (FIXED & IMPROVED) ======================
+document.getElementById('quickAddDriverForm')?.addEventListener('submit', function (e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const btn = this.querySelector('.save-btn');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = 'Saving...';
+    btn.disabled = true;
+
+    fetch('/loads/add-driver/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            showToast('Driver added successfully!', 'success');
+            
+            // Close modal and reset form
+            addDriverModal.style.display = 'none';
+            this.reset();
+            document.querySelectorAll('.file-name').forEach(el => el.textContent = '');
+
+            // CRITICAL: Re-fetch drivers and repopulate BOTH dropdowns
+            fetch(`/api/vendors/${currentVendorId}/drivers/`)
+                .then(r => r.json())
+                .then(drivers => {
+                    // Clear and repopulate driver dropdown
+                    driverSelect.innerHTML = '<option value="">Select Driver</option>';
+                    drivers.forEach(driver => {
+                        const opt = new Option(`${driver.full_name} - ${driver.phone_number}`, driver.id);
+                        driverSelect.add(opt);
+                    });
+
+                    // Auto-select the newly added driver if returned from backend
+                    if (d.driver_id) {
+                        driverSelect.value = d.driver_id;
+                    } else if (d.driver) {
+                        // In case backend returns full object
+                        const newDriver = d.driver;
+                        const opt = new Option(`${newDriver.full_name} - ${newDriver.phone_number}`, newDriver.id);
+                        driverSelect.add(opt);
+                        driverSelect.value = newDriver.id;
+                    }
+
+                  
+                });
+        } else {
+            showToast(d.error || 'Failed to add driver', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('Network error', 'error');
+    })
+    .finally(() => {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+    });
+});
+
+// ====================== QUICK ADD VEHICLE (FIXED & IMPROVED) ======================
+document.getElementById('quickAddVehicleForm')?.addEventListener('submit', function (e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const btn = this.querySelector('.save-btn');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = 'Saving...';
+    btn.disabled = true;
+
+    fetch('/loads/add-vehicle/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            showToast('Vehicle added successfully!', 'success');
+            
+            addVehicleModal.style.display = 'none';
+            this.reset();
+            document.querySelectorAll('.file-name').forEach(el => el.textContent = '');
+
+            // Re-fetch vehicles and repopulate vehicle dropdown
+            fetch(`/api/vendors/${currentVendorId}/vehicles/`)
+                .then(r => r.json())
+                .then(vehicles => {
+                    vehicleTypeSelect.innerHTML = '<option value="">Select Vehicle</option>';
+                    vehicles.forEach(vehicle => {
+                        const opt = new Option(vehicle.reg_no, vehicle.id);
+                        vehicleTypeSelect.add(opt);
+                    });
+
+                    // Auto-select the newly added vehicle
+                    if (d.vehicle_id) {
+                        vehicleTypeSelect.value = d.vehicle_id;
+                    } else if (d.vehicle) {
+                        const newVehicle = d.vehicle;
+                        const opt = new Option(newVehicle.reg_no, newVehicle.id);
+                        vehicleTypeSelect.add(opt);
+                        vehicleTypeSelect.value = newVehicle.id;
+                    }
+
+                  
+                });
+        } else {
+            showToast(d.error || 'Failed to add vehicle', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('Network error', 'error');
+    })
+    .finally(() => {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+    });
 });
 </script>
-
 </body>
 </html>
 {% endblock %}

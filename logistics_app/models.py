@@ -3,6 +3,10 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 import re
 from decimal import Decimal, InvalidOperation
+from django.utils import timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from django.conf import settings
+
 
 
 
@@ -235,115 +239,7 @@ class VehicleType(models.Model):
         return self.name
     
 
-class Load(models.Model):
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('in_transit', 'In Transit'),
-        ('delivered', 'Delivered'),
-        ('cancelled', 'Cancelled'),
-    ]
-    
-    load_id = models.CharField(max_length=20, unique=True, editable=False)
-    
-    customer = models.ForeignKey(
-        Customer,
-        on_delete=models.CASCADE,
-        related_name='loads'
-    )
-    
-    contact_person_name = models.CharField(max_length=255, blank=True, null=True)
-    contact_person_phone = models.CharField(max_length=15, blank=True, null=True)
-    
-    vehicle_type = models.ForeignKey(
-        VehicleType,
-        on_delete=models.PROTECT,
-        related_name='loads'
-    )
-    
-    pickup_location = models.CharField(max_length=255)
-    drop_location = models.CharField(max_length=255)
-    pickup_date = models.DateField()
-    drop_date = models.DateField()
-    time = models.TimeField()
-    
-    # FREE TEXT — Saved exactly as user types
-    weight = models.CharField(
-        max_length=50,
-        help_text='e.g. 10 Ton, 20T, 15.5 Heavy, 8 Ton Urgent'
-    )
-    
-    # Always Decimal — for correct calculation
-    price_per_unit = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        help_text='Price per ton (₹)'
-    )
-    
-    material = models.CharField(max_length=255, blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
-    
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='created_loads'
-    )
-    
-    def save(self, *args, **kwargs):
-        if not self.load_id:
-            last = Load.objects.order_by('-id').first()
-            if last and last.load_id:
-                num = int(last.load_id.split('-')[1]) + 1
-            else:
-                num = 1001
-            self.load_id = f'L-{num}'
-        super().save(*args, **kwargs)
-    
-    def __str__(self):
-        return f"{self.load_id} - {self.customer.customer_name}"
-    
-    # EXTRACT NUMBER FROM TEXT LIKE "10 Ton" → 10.0
-    def get_weight_numeric(self):
-        if not self.weight:
-            return Decimal('0')
-        match = re.search(r'[\d.]+', self.weight)
-        if match:
-            try:
-                return Decimal(match.group())
-            except InvalidOperation:
-                return Decimal('0')
-        return Decimal('0')
-    
-    # FIXED TOTAL PRICE — THIS WAS THE BUG!
-    @property
-    def total_price(self):
-        return self.get_weight_numeric() * self.price_per_unit
-    
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Load'
-        verbose_name_plural = 'Loads'
-
-
-
 class Vehicle(models.Model):
-    # CORRECT: Each choice is a tuple (value, label)
-    TYPE_CHOICES = [
-        ('heavy_truck', 'Heavy Truck'),
-        ('medium_truck', 'Medium Truck'),
-        ('light_truck', 'Light Truck'),
-    ]
-
-    FUEL_CHOICES = [
-        ('diesel', 'Diesel'),
-        ('petrol', 'Petrol'),
-        ('cng', 'CNG'),
-    ]
 
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -352,12 +248,274 @@ class Vehicle(models.Model):
 
     reg_no = models.CharField(max_length=20, unique=True)
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='vehicles')
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='heavy_truck')
-    fuel_type = models.CharField(max_length=10, choices=FUEL_CHOICES, default='diesel')
+
+    # Accept ANY text (no fixed choices)
+    type = models.CharField(max_length=50)  
+
+    # Load capacity (optional)
+    load_capacity = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Optional uploads
     insurance_doc = models.FileField(upload_to='vehicles/insurance/', null=True, blank=True)
     rc_doc = models.FileField(upload_to='vehicles/rc/', null=True, blank=True)
+
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.reg_no
+    
+    
+
+class Load(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('assigned', 'Assigned'),
+        ('in_transit', 'In Transit'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    TRIP_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('loaded', 'Loaded'),
+        ('lr_uploaded', 'LR Uploaded'),
+        ('first_half_payment', 'First Half Payment'),
+        ('in_transit', 'In Transit'),
+        ('unloading', 'Unloading'),
+        ('pod_uploaded', 'POD Uploaded'),
+        ('payment_completed', 'Payment Completed'),
+    ]
+
+    # Basic Info
+    load_id = models.CharField(max_length=20, unique=True, editable=False, blank=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='loads')
+    contact_person_name = models.CharField(max_length=255, blank=True, null=True)
+    contact_person_phone = models.CharField(max_length=15, blank=True, null=True)
+    vehicle_type = models.ForeignKey(VehicleType, on_delete=models.PROTECT, related_name='loads')
+
+    # PRICE/FREIGHT
+    price_per_unit = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name="Price Per Unit (Full Freight Amount)"
+    )
+
+    # Driver + Vehicle
+    driver = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_loads')
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_loads')
+    assigned_at = models.DateTimeField(null=True, blank=True)
+
+    # Route & Schedule
+    pickup_location = models.CharField(max_length=255)
+    drop_location = models.CharField(max_length=255)
+    pickup_date = models.DateField()
+    drop_date = models.DateField(null=True, blank=True)
+    time = models.TimeField()
+
+    # Load Details
+    weight = models.CharField(max_length=50, blank=True, null=True)
+    material = models.CharField(max_length=255, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    # PAYMENTS
+    first_half_payment = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
+    final_payment = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
+
+    # Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    trip_status = models.CharField(max_length=20, choices=TRIP_STATUS_CHOICES, default='pending')
+
+    # LR DOCUMENTS
+    lr_document = models.FileField(upload_to='lr_documents/', null=True, blank=True)
+    lr_number = models.CharField(max_length=100, blank=True, null=True)
+    lr_uploaded_at = models.DateTimeField(null=True, blank=True)
+    lr_uploaded_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='uploaded_lrs'
+    )
+
+    # POD DOCUMENTS (NO POD NUMBER)
+    pod_document = models.FileField(upload_to='pod_documents/', null=True, blank=True)
+    pod_uploaded_at = models.DateTimeField(null=True, blank=True)
+    pod_uploaded_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='uploaded_pods'
+    )
+
+    # Timeline
+    pending_at = models.DateTimeField(null=True, blank=True)
+    loaded_at = models.DateTimeField(null=True, blank=True)
+    first_half_payment_at = models.DateTimeField(null=True, blank=True)
+    in_transit_at = models.DateTimeField(null=True, blank=True)
+    unloading_at = models.DateTimeField(null=True, blank=True)
+    pod_uploaded_at = models.DateTimeField(null=True, blank=True)
+    payment_completed_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_loads'
+    )
+
+    def save(self, *args, **kwargs):
+        # Generate Load ID
+        if not self.load_id:
+            last = Load.objects.order_by('-id').first()
+            num = int(last.load_id.split('-')[1]) + 1 if last and last.load_id and '-' in last.load_id else 1001
+            self.load_id = f"L-{num}"
+
+        # Initial timestamp
+        if not self.pk and not self.pending_at:
+            self.pending_at = timezone.now()
+
+        # Auto Sync Price = First Half + Final Payment
+        total = (self.first_half_payment or Decimal('0')) + (self.final_payment or Decimal('0'))
+        if total > 0:
+            self.price_per_unit = total.quantize(Decimal('0.01'))
+
+        # Rounding
+        if self.first_half_payment is not None:
+            self.first_half_payment = self.first_half_payment.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        if self.final_payment is not None:
+            self.final_payment = self.final_payment.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        super().save(*args, **kwargs)
+
+    def update_trip_status(self, new_status, user=None, lr_number=None):
+        """Update trip status and timestamps"""
+        self.trip_status = new_status
+
+        timestamp_fields = {
+            'pending': 'pending_at',
+            'loaded': 'loaded_at',
+            'lr_uploaded': 'lr_uploaded_at',
+            'first_half_payment': 'first_half_payment_at',
+            'in_transit': 'in_transit_at',
+            'unloading': 'unloading_at',
+            'pod_uploaded': 'pod_uploaded_at',
+            'payment_completed': 'payment_completed_at',
+        }
+
+        field_name = timestamp_fields.get(new_status)
+        if field_name and not getattr(self, field_name):
+            setattr(self, field_name, timezone.now())
+
+        # LR Logic
+        if new_status == 'lr_uploaded' and lr_number:
+            self.lr_number = lr_number
+            if user:
+                self.lr_uploaded_by = user
+                self.lr_uploaded_at = timezone.now()
+
+        # POD Logic
+        if new_status == 'pod_uploaded' and user:
+            self.pod_uploaded_by = user
+            self.pod_uploaded_at = timezone.now()
+
+        # Sync main status
+        if new_status == 'in_transit':
+            self.status = 'in_transit'
+        elif new_status == 'payment_completed':
+            self.status = 'delivered'
+
+        self.save()
+
+    @property
+    def total_trip_amount(self):
+        return (self.first_half_payment + self.final_payment).quantize(Decimal('0.01'))
+
+    @property
+    def total_trip_amount_formatted(self):
+        return f"₹{self.total_trip_amount:,.2f}"
+
+    def __str__(self):
+        return f"{self.load_id} | {self.customer} | ₹{self.total_trip_amount:,.0f}"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Load"
+        verbose_name_plural = "Loads"
+
+class LoadRequest(models.Model):
+    load = models.ForeignKey(Load, on_delete=models.CASCADE, related_name='requests')
+    vendor = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='load_requests')
+    message = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status_choices = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected')
+    ]
+    status = models.CharField(max_length=10, choices=status_choices, default='pending')
+
+    def __str__(self):
+        return f"{self.vendor.full_name} -> {self.load.load_id} ({self.status})"
+    
+
+class TripComment(models.Model):
+    """Model to store chat messages for a trip between admin and vendor"""
+    
+    SENDER_TYPE_CHOICES = [
+        ('admin', 'Admin'),
+        ('vendor', 'Vendor/Owner'),
+    ]
+    
+    load = models.ForeignKey(
+        'Load', 
+        on_delete=models.CASCADE, 
+        related_name='comments',
+        help_text='The load/trip this comment belongs to'
+    )
+    
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='trip_comments',
+        help_text='The user who sent this message'
+    )
+    
+    sender_type = models.CharField(
+        max_length=10,
+        choices=SENDER_TYPE_CHOICES,
+        help_text='Type of sender (admin or vendor)'
+    )
+    
+    comment = models.TextField(
+        help_text='The message content'
+    )
+    
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When the comment was created'
+    )
+    
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text='When the comment was last updated'
+    )
+    
+    is_read = models.BooleanField(
+        default=False,
+        help_text='Whether the comment has been read by the recipient'
+    )
+    
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Trip Comment'
+        verbose_name_plural = 'Trip Comments'
+        indexes = [
+            models.Index(fields=['load', 'created_at']),
+            models.Index(fields=['sender', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.sender.full_name} - {self.load.load_id} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+    
+    def save(self, *args, **kwargs):
+        # Automatically set sender_type based on sender's role
+        if not self.sender_type:
+            if self.sender.is_staff or self.sender.role == 'admin':
+                self.sender_type = 'admin'
+            elif self.sender.role == 'vendor':
+                self.sender_type = 'vendor'
+        super().save(*args, **kwargs)

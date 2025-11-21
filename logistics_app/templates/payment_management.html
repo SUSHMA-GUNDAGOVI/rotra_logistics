@@ -1,0 +1,304 @@
+{% extends "admin_base.html" %}
+{% load static %}
+{% block title %}Trip & Payment Management{% endblock %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Trip & Payment Management</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+  <style>
+    .route-display { display: flex; align-items: center; gap: 8px; font-weight: 500; color: #374151; }
+    .route-arrow { color: #dc2626; font-size: 14px; }
+    .driver-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .status-badge {
+      padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    }
+    .status-ongoing { background: #fef3c7; color: #d97706; }
+    .status-completed { background: #d1fae5; color: #16a34a; }
+    .status-cancelled { background: #fee2e2; color: #dc2626; }
+    .payment-paid { background: #d1fae5; color: #16a34a; }
+    .payment-pending { background: #dbeafe; color: #1d4ed8; }
+    .payment-failed { background: #fee2e2; color: #dc2626; }
+    .payment-refunded { background: #f3f4f6; color: #6b7280; }
+    .amount { font-weight: 600; color: #16a34a; }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <h2>Trip & Payment Management</h2>
+    <div class="search-add-container">
+      <input type="text" id="searchInput" placeholder="Search by trip ID, customer, route..." class="search-input">
+      <button class="add-button" style="background: #16a34a;">All Confirmed Trips</button>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-card">
+    <table id="tripTable">
+      <thead>
+        <tr>
+          <th>Trip ID</th>
+          <th>Route</th>
+          <th>Customer</th>
+          <th>Driver</th>
+          <th>Amount</th>
+          <th>Payment</th>
+          <th>Trip Status</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for booking in bookings %}
+        <tr class="clickable-row" 
+            data-booking-id="{{ booking.id }}"
+            data-booking='{
+              "trip_id": "{{ booking.trip.load_id }}",
+              "pickup": "{{ booking trip.pickup_location }}",
+              "drop": "{{ booking.trip.drop_location }}",
+              "customer": "{{ booking.user.get_full_name|default:booking.user.email }}",
+              "customer_email": "{{ booking.user.email }}",
+              "driver": "{{ booking.trip.driver.full_name|default:"Not Assigned" }}",
+              "driver_phone": "{{ booking.trip.driver.phone_number|default:"-" }}",
+              "vehicle": "{{ booking.trip.vehicle.reg_no|default:"-" }}",
+              "amount": {{ booking.total_price }},
+              "payment_status": "{{ booking.payment.status }}",
+              "payment_id": "{{ booking.payment.stripe_payment_intent_id|default:"-" }}",
+              "payment_method": "{{ booking.payment.payment_method_type|default:"Card" }}",
+              "last4": "{{ booking.payment.last4|default:"4242" }}",
+              "trip_status": "{{ booking.trip.status }}",
+              "trip_status_display": "{{ booking.trip.get_status_display }}",
+              "booking_date": "{{ booking.created_at|date:"M d, Y" }}",
+              "description": "{{ booking.trip.title|default:"Trip Booking" }}"
+            }'>
+          <td><strong>{{ booking.trip.load_id }}</strong></td>
+          <td>
+            <div class="route-display">
+              <span>{{ booking.trip.pickup_location }}</span>
+              <i class="fas fa-arrow-right route-arrow"></i>
+              <span>{{ booking.trip.drop_location }}</span>
+            </div>
+          </td>
+          <td>
+            <div style="font-size:14px;">
+              <div><strong>{{ booking.user.get_full_name|default:booking.user.email }}</strong></div>
+              <small style="color:#6b7280;">{{ booking.user.email }}</small>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="driver-avatar">
+                {{ booking.trip.driver.full_name|slice:":2"|upper|default:"NA" }}
+              </div>
+              <div>
+                <div style="font-size:13px;"><strong>{{ booking.trip.driver.full_name|default:"Not Assigned" }}</strong></div>
+                <small style="color:#6b7280;">{{ booking.trip.vehicle.reg_no|default:"-" }}</small>
+              </div>
+            </div>
+          </td>
+          <td class="amount">₹{{ booking.total_price|floatformat:0 }}</td>
+          <td>
+            <span class="status-badge payment-{{ booking.payment.status }}">
+              {% if booking.payment.status == 'succeeded' %}Paid{% endif %}
+              {% if booking.payment.status == 'requires_payment_method' %}Pending{% endif %}
+              {% if booking.payment.status == 'failed' %}Failed{% endif %}
+              {% if booking.payment.status == 'refunded' %}Refunded{% endif %}
+            </span>
+          </td>
+          <td>
+            <span class="status-badge status-{{ booking.trip.status }}">
+              {{ booking.trip.get_status_display }}
+            </span>
+          </td>
+          <td>{{ booking.created_at|date:"M d, Y" }}</td>
+          <td class="action-col">
+            <div class="action-buttons">
+              <button class="action-view" title="View Details"><i class="fas fa-eye"></i></button>
+              {% if booking.payment.status == 'succeeded' %}
+                <button class="action-refund" title="Refund" style="color:#dc2626;"><i class="fas fa-undo"></i></button>
+              {% endif %}
+              {% if booking.trip.status == 'ongoing' or booking.trip.status == 'assigned' %}
+                <button class="action-complete" title="Mark Complete" style="color:#16a34a;"><i class="fas fa-check-circle"></i></button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" style="text-align:center;padding:80px;color:#6b7280;font-size:16px;">
+            <i class="fas fa-route fa-3x mb-3" style="color:#e5e7eb;"></i><br>
+            No confirmed bookings yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination-container">
+      <div class="entries-per-page">
+        <span>Show</span>
+        <select id="entriesPerPage">
+          <option value="10" selected>10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+        <span>entries</span>
+      </div>
+      <div class="pagination-info">
+        Showing <span id="showingStart">0</span> to <span id="showingEnd">0</span> of <span id="totalEntries">0</span> entries
+      </div>
+      <div class="pagination-controls">
+        <button id="prevPage">Previous</button>
+        <span id="currentPageInfo">Page 1</span>
+        <button id="nextPage">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unified Sidebar -->
+  <div id="profileSidebar">
+    <div class="sidebar-header">
+      <h3>Booking & Payment Details</h3>
+      <button class="close-btn" id="closeSidebar">×</button>
+    </div>
+    <div class="profile-avatar">
+      <div class="avatar-circle" style="background: linear-gradient(135deg, #10b981, #059669); width:70px; height:70px;">
+        <i class="fas fa-ticket-alt fa-2x"></i>
+      </div>
+    </div>
+    <div class="profile-info">
+      <h3 class="profile-name" id="tripId"></h3>
+      <p class="profile-phone" id="bookingStatus"></p>
+    </div>
+
+    <div class="info-section">
+      <h4><i class="fas fa-route"></i> Trip Route</h4>
+      <div class="info-row"><span class="info-label">From</span><span id="pickup"></span></div>
+      <div class="info-row"><span class="info-label">To</span><span id="drop"></span></div>
+    </div>
+
+    <div class="info-section">
+      <h4><i class="fas fa-user"></i> Customer</h4>
+      <div class="info-row"><span class="info-label">Name</span><span id="customerName"></span></div>
+      <div class="info-row"><span class="info-label">Email</span><span id="customerEmail"></span></div>
+    </div>
+
+    <div class="info-section">
+      <h4><i class="fas fa-truck"></i> Driver & Vehicle</h4>
+      <div class="info-row"><span class="info-label">Driver</span><span id="driverName"></span></div>
+      <div class="info-row"><span class="info-label">Phone</span><span id="driverPhone"></span></div>
+      <div class="info-row"><span class="info-label">Vehicle</span><span id="vehicle"></span></div>
+    </div>
+
+    <div class="info-section">
+      <h4><i class="fas fa-credit-card"></i> Payment</h4>
+      <div class="info-row"><span class="info-label">Amount</span><span class="amount" id="amount"></span></div>
+      <div class="info-row"><span class="info-label">Status</span><span id="paymentStatus"></span></div>
+      <div class="info-row"><span class="info-label">Method</span><span id="paymentMethod"></span></div>
+      <div class="info-row"><span class="info-label">Payment ID</span><code id="paymentId" style="font-size:12px;"></code></div>
+    </div>
+
+    <div class="sidebar-actions">
+      <button class="sidebar-btn" style="background:#2563eb;"><i class="fas fa-history"></i> View History</button>
+      <button id="refundBtn" class="sidebar-btn" style="background:#dc2626; display:none;"><i class="fas fa-undo"></i> Refund Payment</button>
+      <button id="completeBtn" class="sidebar-btn" style="background:#16a34a; display:none;"><i class="fas fa-check-circle"></i> Mark Trip Complete</button>
+    </div>
+  </div>
+  <div id="sidebarOverlay"></div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<script>
+// Same powerful JS as before — now handles both payment refund & trip completion
+document.addEventListener('DOMContentLoaded', function () {
+  // ... (same sidebar, search, pagination code as your original)
+
+  let currentBookingId = null;
+  let currentPaymentStatus = '';
+  let currentTripStatus = '';
+
+  function openSidebar(row) {
+    const data = JSON.parse(row.dataset.booking);
+    currentBookingId = row.dataset.bookingId;
+    currentPaymentStatus = data.payment_status;
+    currentTripStatus = data.trip_status;
+
+    document.getElementById('tripId').textContent = data.trip_id;
+    document.getElementById('pickup').textContent = data.pickup;
+    document.getElementById('drop').textContent = data.drop;
+    document.getElementById('customerName').textContent = data.customer;
+    document.getElementById('customerEmail').textContent = data.customer_email;
+    document.getElementById('driverName').textContent = data.driver;
+    document.getElementById('driverPhone').textContent = data.driver_phone;
+    document.getElementById('vehicle').textContent = data.vehicle;
+    document.getElementById('amount').textContent = '₹' + parseInt(data.amount).toLocaleString();
+    document.getElementById('paymentStatus').textContent = data.payment_status.charAt(0).toUpperCase() + data.payment_status.slice(1).replace(/_/g, ' ');
+    document.getElementById('paymentStatus').className = `status-badge payment-${data.payment_status}`;
+    document.getElementById('paymentMethod').textContent = data.payment_method + (data.last4 ? ' •••• ' + data.last4 : '');
+    document.getElementById('paymentId').textContent = data.payment_id;
+
+    document.getElementById('refundBtn').style.display = data.payment_status === 'succeeded' ? 'block' : 'none';
+    document.getElementById('completeBtn').style.display = ['assigned', 'ongoing'].includes(data.trip_status) ? 'block' : 'none';
+
+    document.getElementById('profileSidebar').style.transform = 'translateX(0)';
+    document.getElementById('sidebarOverlay').classList.add('show');
+    row.style.backgroundColor = '#f0fdf4';
+  }
+
+  // Refund & Complete actions
+  document.getElementById('refundBtn').addEventListener('click', () => {
+    if (confirm('Issue full refund?')) {
+      fetch(`/bookings/${currentBookingId}/refund/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+      }).then(r => r.json()).then(d => {
+        if (d.success) {
+          Toastify({text: "Refund successful!", backgroundColor: "#16a34a"}).showToast();
+          setTimeout(() => location.reload(), 1500);
+        }
+      });
+    }
+  });
+
+  document.getElementById('completeBtn').addEventListener('click', () => {
+    if (confirm('Mark this trip as completed?')) {
+      fetch(`/trips/${currentBookingId}/complete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+      }).then(r => r.json()).then(d => {
+        if (d.success) {
+          Toastify({text: "Trip completed!", backgroundColor: "#16a34a"}).showToast();
+          setTimeout(() => location.reload(), 1500);
+        }
+      });
+    }
+  });
+
+  // Keep your existing search + pagination + row click logic here...
+});
+</script>
+</body>
+</html>
+{% endblock %}

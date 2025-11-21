@@ -30,9 +30,14 @@ SECRET_KEY = 'django-insecure-kqadhzrc*%i5auptz93gqn_)!54@p2**6pl1gcjv+ik%kb5w)_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
-
+CSRF_TRUSTED_ORIGINS = [
+    "http://192.168.1.11",
+    "http://192.168.1.17:8000",
+    "http://192.168.1.17",
+    "http://*",
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -49,6 +54,7 @@ AUTH_USER_MODEL = 'logistics_app.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # default backend
     'django.contrib.auth.backends.ModelBackend',  # fallback
+    'logistics_app.backends.EmailOrPhoneBackend',
 ]
 
 
@@ -121,6 +127,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.AllowAny",
+    )
 }
 
 SIMPLE_JWT = {

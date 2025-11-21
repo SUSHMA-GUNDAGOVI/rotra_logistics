@@ -12,19 +12,274 @@
   <title>Employee / Traffic Person Management</title>
 
   <!-- Font Awesome -->
-  <link
-    rel="stylesheet"
+  <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
     crossorigin="anonymous"
-    referrerpolicy="no-referrer"
-  />
+    referrerpolicy="no-referrer" />
 
   <!-- Google Fonts: Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <style>
+    /* Updated Sidebar Styles */
+    #profileSidebar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 320px;
+      height: 100vh;
+      background: white;
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      z-index: 1001;
+      overflow-y: auto;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      display: flex;
+      flex-direction: column;
+    }
 
+    #profileSidebar::-webkit-scrollbar {
+      width: 0 !important;
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .sidebar-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+
+    .close-btn:hover {
+      background-color: #f3f4f6;
+    }
+
+    .profile-avatar {
+      display: flex;
+      justify-content: center;
+      padding: 24px 20px 16px;
+    }
+
+      .avatar-circle {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .avatar-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .avatar-initials {
+      position: relative;
+      z-index: 1;
+    }
+
+    .avatar-circle img.hidden {
+      display: none;
+    }
+
+    .profile-info {
+      text-align: center;
+      padding: 0 20px 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .profile-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 8px 0;
+    }
+
+    .profile-phone {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 0 0 4px 0;
+    }
+
+    .profile-id {
+      font-size: 13px;
+      color: #9ca3af;
+      margin: 0;
+    }
+
+    .info-section {
+      padding: 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .info-section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 16px 0;
+    }
+
+    .info-section-title i {
+      color: #6b7280;
+      font-size: 16px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-label {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .info-value {
+      font-size: 13px;
+      color: #111827;
+      font-weight: 500;
+    }
+
+    .performance-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .performance-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .performance-label {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .performance-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #16a34a;
+    }
+
+    .sidebar-actions {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-top: 1px solid #e5e7eb;
+      background: white;
+      margin-top: auto;
+    }
+
+    .sidebar-btn {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-view-history {
+      background-color: #dc2626;
+      color: white;
+    }
+
+    .btn-view-history:hover {
+      background-color: #b91c1c;
+    }
+
+    .btn-edit {
+      background-color: white;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+
+    .btn-edit:hover {
+      background-color: #f9fafb;
+    }
+
+    .btn-deactivate {
+      background-color: white;
+      color: #dc2626;
+      border: 1px solid #dc2626;
+    }
+
+    .btn-deactivate:hover {
+      background-color: #fef2f2;
+    }
+
+    #sidebarOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 1000;
+    }
+
+    #sidebarOverlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+  </style>
 </head>
 <body>
 
@@ -91,7 +346,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="6" style="text-align: center; padding: 40px; color: #6b7280;">
+            <td colspan="5" style="text-align: center; padding: 40px; color: #6b7280;">
               No employees found. Click "Add Employee" to get started.
             </td>
           </tr>
@@ -99,29 +354,29 @@
       </tbody>
     </table>
 
-<!-- PAGINATION -->
-<div class="pagination-container">
-  <div class="entries-per-page">
-    <span>Show</span>
-    <select id="entriesPerPage">
-      <option value="5">5</option>
-      <option value="10" selected>10</option>
-      <option value="25">25</option>
-      <option value="50">50</option>
-    </select>
-    <span>entries</span>
-  </div>
+    <!-- PAGINATION -->
+    <div class="pagination-container">
+      <div class="entries-per-page">
+        <span>Show</span>
+        <select id="entriesPerPage">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+        <span>entries</span>
+      </div>
 
-  <div class="pagination-info">
-    Showing <span id="showingStart">0</span> to <span id="showingEnd">0</span> of <span id="totalEntries">0</span> entries
-  </div>
+      <div class="pagination-info">
+        Showing <span id="showingStart">0</span> to <span id="showingEnd">0</span> of <span id="totalEntries">0</span> entries
+      </div>
 
-  <div class="pagination-controls">
-    <button id="prevPage" title="Previous">Previous</button>
-    <span id="currentPageInfo" style="padding: 0 12px; color: #374151; font-size: 14px;">Page 1</span>
-    <button id="nextPage" title="Next">Next</button>
-  </div>
-</div>
+      <div class="pagination-controls">
+        <button id="prevPage" title="Previous">Previous</button>
+        <span id="currentPageInfo" style="padding: 0 12px; color: #374151; font-size: 14px;">Page 1</span>
+        <button id="nextPage" title="Next">Next</button>
+      </div>
+    </div>
   </div>
 
   <!-- ADD EMPLOYEE MODAL -->
@@ -187,33 +442,69 @@
     </div>
   </div>
 
-  <!-- PROFILE SIDEBAR -->
+  <!-- UPDATED PROFILE SIDEBAR -->
   <div id="profileSidebar">
-    <button class="close-btn" id="closeSidebar">×</button>
-
-    <div class="profile-header">
-      <img id="profileImg" src="" alt="Profile">
-      <h3 id="profileName" style="margin:8px 0 4px 0; font-size:18px; font-weight:600;"></h3>
-      <div id="profileRole" class="role-badge"></div>
-      <p id="profileEmail" style="margin:6px 0; color:#6b7280; font-size:14px;"></p>
-      <p id="profileContact" style="margin:0; color:#6b7280; font-size:14px;"></p>
+    <div class="sidebar-header">
+      <h3>Employee Profile</h3>
+      <button class="close-btn" id="closeSidebar">×</button>
     </div>
 
-    <div class="profile-section">
-      <h4>Details</h4>
-      <p>Status: <span id="profileStatus" class="status-badge status-active">Active</span></p>
-      <p>Joining Date: <span id="profileJoinDate"></span></p>
-      
+    <div class="profile-avatar">
+      <div class="avatar-circle" id="profileAvatar">
+        <span class="avatar-initials" id="avatarInitials"></span>
+        <img id="profileImg" src="" alt="Profile" onerror="this.classList.add('hidden')">
+      </div>
     </div>
 
-    <div class="profile-section">
-      <h4>Activity Stats</h4>
-      <p>Leads Managed: <span id="profileLeads" style="color:var(--primary); font-weight:600;"></span></p>
+    <div class="profile-info">
+      <h3 class="profile-name" id="profileName"></h3>
+      <p class="profile-phone" id="profileEmail"></p>
+      <p class="profile-id" id="profileContact"></p>
     </div>
 
-    <div class="profile-buttons">
-      <button class="btn-edit">Edit Profile</button>
-      <button class="btn-deactivate" id="toggleStatusBtn">Deactivate Account</button>
+    <div class="info-section">
+      <h4 class="info-section-title">
+        <i class="fas fa-info-circle"></i>
+        Details
+      </h4>
+      <div class="info-row">
+        <span class="info-label">Role:</span>
+        <span class="info-value" id="profileRole"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Status:</span>
+        <span class="info-value" id="profileStatus"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Joining Date:</span>
+        <span class="info-value" id="profileJoinDate"></span>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <h4 class="info-section-title">
+        <i class="fas fa-chart-line"></i>
+        Activity Stats
+      </h4>
+      <div class="performance-item">
+        <span class="performance-label">Leads Managed</span>
+        <span class="performance-value" id="profileLeads">0</span>
+      </div>
+    </div>
+
+    <div class="sidebar-actions">
+      <button class="sidebar-btn btn-view-history">
+        <i class="fas fa-history"></i>
+        View Activity History
+      </button>
+      <button class="sidebar-btn btn-edit">
+        <i class="fas fa-edit"></i>
+        Edit
+      </button>
+      <button class="sidebar-btn btn-deactivate" id="toggleStatusBtn">
+        <i class="fas fa-ban"></i>
+        Deactivate
+      </button>
     </div>
   </div>
 
@@ -223,7 +514,6 @@
 <!-- Toastify CDN -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -271,8 +561,8 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentEmployeeId = null;
   let currentPage = 1;
   let perPage = parseInt(entriesSelect.value, 10);
-  let allRows = [];           // will hold all clickable rows
-  let filteredRows = [];      // after search
+  let allRows = [];
+  let filteredRows = [];
 
   // === CSRF TOKEN ===
   function getCookie(name) {
@@ -308,28 +598,54 @@ document.addEventListener('DOMContentLoaded', function () {
     renderPage();
   });
 
+  // === GET INITIALS HELPER ===
+  function getInitials(name) {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+
   // === SIDEBAR OPEN / CLOSE ===
   function openSidebar(row) {
     const data = JSON.parse(row.dataset.employee);
     currentEmployeeId = data.id;
 
-    document.getElementById('profileImg').src = data.img;
+    // Update avatar initials
+    const initials = getInitials(data.name);
+    document.getElementById('avatarInitials').textContent = initials;
+
+    // Update avatar with profile image (if exists)
+    const profileImg = document.getElementById('profileImg');
+    profileImg.src = data.img;
+    profileImg.classList.remove('hidden');
+    
+    // If image fails to load, show initials
+    profileImg.onerror = function() {
+      this.classList.add('hidden');
+    };
+
+    // Update profile info from backend data
     document.getElementById('profileName').textContent = data.name;
     document.getElementById('profileEmail').textContent = data.email;
     document.getElementById('profileContact').textContent = data.contact || '-';
+
+    // Update details section
+    document.getElementById('profileRole').textContent = data.role;
+    document.getElementById('profileStatus').textContent = data.status;
     document.getElementById('profileJoinDate').textContent = data.joinDate;
+
+    // Update activity stats
     document.getElementById('profileLeads').textContent = data.leadsManaged;
 
-    const statusEl = document.getElementById('profileStatus');
-    statusEl.textContent = data.status;
-    statusEl.className = 'status-badge ' + (data.status === 'Active' ? 'status-active' : 'status-inactive');
-
-    const roleBadge = document.getElementById('profileRole');
-    roleBadge.textContent = data.role;
-    roleBadge.className = 'role-badge ' + (data.role === 'Admin' ? 'role-admin' : 'role-traffic');
-
-    document.getElementById('toggleStatusBtn').textContent =
-      data.status === 'Active' ? 'Deactivate Account' : 'Activate Account';
+    // Update toggle button based on status
+    const toggleBtn = document.getElementById('toggleStatusBtn');
+    if (data.status === 'Active') {
+      toggleBtn.innerHTML = '<i class="fas fa-ban"></i> Deactivate';
+    } else {
+      toggleBtn.innerHTML = '<i class="fas fa-check-circle"></i> Activate';
+    }
 
     sidebar.style.transform = 'translateX(0)';
     overlay.classList.add('show');
@@ -383,8 +699,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     row.querySelector('.action-edit')?.addEventListener('click', e => {
       e.stopPropagation();
-      const name = row.querySelector('td:nth-child(1)').textContent.trim();
-      showToast(`Edit functionality for ${name} – coming soon!`, 'info');
+      showToast('Edit functionality coming soon!', 'info');
     });
 
     row.querySelector('.action-delete')?.addEventListener('click', e => {
@@ -492,10 +807,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .catch(() => showToast('Network error', 'error'));
   });
 
-  // ==============================================================
-  // === PAGINATION SYSTEM
-  // ==============================================================
-
+  // === PAGINATION ===
   function showNoDataRow() {
     tbody.innerHTML = `
       <tr>
@@ -509,36 +821,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const start = (currentPage - 1) * perPage;
     const end   = start + perPage;
 
-    // Hide all rows
     allRows.forEach(r => r.style.display = 'none');
-
-    // Show only current page
     filteredRows.slice(start, end).forEach(r => r.style.display = '');
 
-    // Update info
     const visibleEnd = Math.min(end, filteredRows.length);
     showingStart.textContent = filteredRows.length ? start + 1 : 0;
     showingEnd.textContent   = visibleEnd;
     totalEntries.textContent = filteredRows.length;
 
-    // Pagination buttons
     renderPaginationButtons();
   }
 
   function renderPaginationButtons() {
     const totalPages = Math.ceil(filteredRows.length / perPage);
-    
-    // Update current page info
     currentPageInfo.textContent = `Page ${currentPage}`;
-    
-    // Prev button
     prevBtn.disabled = currentPage === 1;
-    
-    // Next button
     nextBtn.disabled = currentPage === totalPages || totalPages === 0;
   }
 
-  // === EVENT LISTENERS FOR PAGINATION ===
   entriesSelect.addEventListener('change', function () {
     perPage = parseInt(this.value, 10);
     currentPage = 1;
@@ -560,7 +860,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // === INITIALIZE ===
   initRows();
 });
 </script>
